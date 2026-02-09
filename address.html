@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Address - Ghaba</title>
+    <link rel="stylesheet" href="address.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="nav">
+        <i class="fa-solid fa-arrow-left" onclick="history.back()"></i>
+        <span>Delivery Address</span>
+    </div>
+
+    <div class="form-container">
+        <h3 class="section-title">Contact Details</h3>
+        
+        <div class="input-group">
+            <label><i class="fa-solid fa-user"></i> Full Name*</label>
+            <input type="text" id="custName" placeholder="Recipient's Name">
+        </div>
+
+        <div class="input-group">
+            <label><i class="fa-solid fa-phone"></i> Phone Number*</label>
+            <input type="number" id="custPhone" placeholder="10 Digit mobile number">
+        </div>
+
+        <div class="input-group">
+            <label><i class="fa-solid fa-phone-flip"></i> Alternative Phone (Optional)</label>
+            <input type="number" id="custPhone2" placeholder="Secondary mobile number">
+        </div>
+
+        <hr style="border:0.5px solid #eee; margin:25px 0;">
+        <h3 class="section-title">Address Details</h3>
+
+        <div class="input-group">
+            <label><i class="fa-solid fa-house"></i> House No. / Building Name*</label>
+            <input type="text" id="custHouse" placeholder="Ex: Flat 101, Ghaba Apartments">
+        </div>
+
+        <div class="input-group">
+            <label><i class="fa-solid fa-road"></i> Road Name / Area / Colony*</label>
+            <input type="text" id="custAddress" placeholder="Ex: Near Main Market, Sector 12">
+        </div>
+
+        <div class="input-group">
+            <label><i class="fa-solid fa-location-dot"></i> Landmark (Optional)</label>
+            <input type="text" id="custLandmark" placeholder="Ex: Near Temple, School">
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <div class="input-group" style="flex:1">
+                <label>Pincode*</label>
+                <input type="number" id="custPin" placeholder="6 Digit">
+            </div>
+            <div class="input-group" style="flex:1">
+                <label>City*</label>
+                <input type="text" id="custCity" placeholder="City Name">
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>State*</label>
+            <select id="custState">
+                <option value="">Select State</option>
+                <option value="Uttar Pradesh">Uttar Pradesh</option>
+                <option value="Madhya Pradesh">Madhya Pradesh</option>
+                <option value="Rajasthan">Rajasthan</option>
+                <option value="Delhi">Delhi</option>
+                <option value="Bihar">Bihar</option>
+                <option value="Maharashtra">Maharashtra</option>
+                <option value="Gujarat">Gujarat</option>
+                <option value="Haryana">Haryana</option>
+                <option value="Punjab">Punjab</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="total-info">
+            <span id="finalPriceDisplay" style="font-weight:bold; font-size:18px;">₹0</span> 
+            <br><small style="color: #2e7d32; font-weight: bold;"><i class="fa-solid fa-hand-holding-dollar"></i> Pay on Delivery Available</small>
+        </div>
+        <button onclick="confirmOrder()" class="final-btn">CONFIRM ORDER</button>
+    </div>
+
+    <script>
+        // --- 1. Price Sync Logic (Handles Buy Now vs Cart Total) ---
+        window.onload = function() {
+            let finalPrice = 0;
+
+            // Step A: Check if "Buy Now" was clicked (Single Product)
+            let buyNowProduct = JSON.parse(localStorage.getItem('buyNowItem'));
+            
+            // Step B: Check if Cart Total exists (Saved from Cart Page)
+            let cartTotal = localStorage.getItem('cartTotal');
+
+            if (buyNowProduct) {
+                // Agar Detail page se Buy Now dabaya hai
+                finalPrice = Number(buyNowProduct.price);
+            } else if (cartTotal) {
+                // Agar Cart page se Checkout dabaya hai
+                finalPrice = Number(cartTotal);
+            } else {
+                // Default Case: Calculate from cart if nothing else found
+                let cartProducts = JSON.parse(localStorage.getItem('myCart')) || [];
+                finalPrice = cartProducts.reduce((sum, p) => sum + Number(p.price), 0);
+            }
+
+            document.getElementById('finalPriceDisplay').innerText = "₹" + finalPrice;
+        };
+
+        // --- 2. Validation & Confirmation Logic ---
+        function confirmOrder() {
+            const name = document.getElementById('custName').value.trim();
+            const phone = document.getElementById('custPhone').value.trim();
+            const house = document.getElementById('custHouse').value.trim();
+            const area = document.getElementById('custAddress').value.trim();
+            const pin = document.getElementById('custPin').value.trim();
+            const city = document.getElementById('custCity').value.trim();
+            const state = document.getElementById('custState').value;
+
+            if(!name || !phone || !house || !area || !pin || !city || !state) {
+                alert("Kripya saari (*) wali details bharein!");
+                return;
+            }
+
+            if(phone.length !== 10) {
+                alert("Mobile number 10 digit ka hona chahiye!");
+                return;
+            }
+
+            // Order Object tyyar karna
+            const orderDetails = {
+                customerName: name,
+                customerPhone: phone,
+                address: `${house}, ${area}, ${city}, ${state} - ${pin}`,
+                totalAmount: document.getElementById('finalPriceDisplay').innerText,
+                paymentMethod: "Pay on Delivery",
+                orderDate: new Date().toLocaleString()
+            };
+
+            // Save order data for QR/Final page
+            localStorage.setItem('lastOrderAddress', JSON.stringify(orderDetails));
+
+            // CLEANUP: Taaki agli shopping fresh ho
+            localStorage.removeItem('buyNowItem');
+            // localStorage.removeItem('cartTotal'); // Isko qr.html par bhi remove kar sakte hain
+
+            window.location.href = 'qr.html';
+        }
+    </script>
+</body>
+</html>
