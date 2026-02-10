@@ -1,6 +1,7 @@
 // --- 1. CONFIGURATION ---
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwkEy3fbcW6WNJGnEQHGyCif4d-FSp5RMSywpVWGoRZeb0sQcuNB9B4g2V-sfp-TB-N/exec";
-const IMGBB_API_KEY = "YOUR_IMGBB_API_KEY_HERE"; // <--- Yahan apni ImgBB API Key dalein
+// Apni Google Sheet ka naya Deployment URL yahan paste karein
+const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwbEy3fbcW6WNJGnEQHGyCif4d-FSp5RMSywpVWGoRZeb0sQcuNB9B4g2V-sfp-TB-N/exec";
+const IMGBB_API_KEY = "9e2c45e20b2a686c19d3c0cc9cf06f9b"; 
 
 // --- 2. Security Check (Login) ---
 window.onload = function() {
@@ -15,8 +16,8 @@ window.onload = function() {
 };
 
 /**
- * --- 3. Cloud Upload Function (ImgBB) ---
- * Photo select karte hi online link banayega
+ * --- 3. Smart Cloud Upload (ImgBB) ---
+ * Is function ko HTML ke onchange="autoUrl(this, X)" se call kiya ja raha hai
  */
 async function autoUrl(input, slot) {
     const file = input.files[0];
@@ -24,11 +25,10 @@ async function autoUrl(input, slot) {
 
     const previewImg = document.getElementById(`pre${slot}`);
     const urlInput = document.getElementById(`url${slot}`);
-    const btnSpan = document.getElementById(`btn${slot}`);
+    const btnSpan = input.previousElementSibling; // Button text badalne ke liye
 
-    // Loading State
-    if (previewImg) previewImg.style.opacity = "0.3";
     if (btnSpan) btnSpan.innerText = "Wait...";
+    if (previewImg) previewImg.style.opacity = "0.3";
 
     const formData = new FormData();
     formData.append("image", file);
@@ -42,29 +42,33 @@ async function autoUrl(input, slot) {
 
         if (data.success) {
             const onlineUrl = data.data.url;
-            urlInput.value = onlineUrl; // Link box mein aa jayega
+            urlInput.value = onlineUrl;
             if (previewImg) {
                 previewImg.src = onlineUrl;
                 previewImg.style.opacity = "1";
             }
             if (btnSpan) btnSpan.innerText = "Done ✅";
         } else {
-            alert("Upload Fail! API Key check karein.");
+            alert("Upload Fail! Check ImgBB Key.");
+            if (btnSpan) btnSpan.innerText = "Retry";
         }
     } catch (error) {
         console.error("ImgBB Error:", error);
-        alert("Internet issue ya API Error.");
+        alert("Network Error! Photo upload nahi hui.");
     }
 }
 
-// --- 4. Save Product Logic (Sheet + Local) ---
+// --- 4. Save Product Logic ---
 async function saveProduct() {
+    console.log("Save function triggered!"); // Debugging ke liye
+
+    // HTML IDs se data lena
     const name = document.getElementById('pName').value.trim();
     const price = document.getElementById('pPrice').value.trim();
     const category = document.getElementById('pCategory').value;
     const video = document.getElementById('pVideo').value.trim();
 
-    // Saare 5 photo URLs ka array banana
+    // Gallery Array (url1 se url5 tak)
     const gallery = [
         document.getElementById('url1').value,
         document.getElementById('url2').value,
@@ -75,12 +79,15 @@ async function saveProduct() {
 
     // Validation
     if (!name || !price || gallery.length === 0) {
-        alert("Kripya Name, Price aur kam se kam 1 Photo zaroori bharein!");
+        alert("Please fill Name, Price and at least 1 Image!");
         return;
     }
 
-    const submitBtn = document.getElementById('publishBtn');
-    submitBtn.innerText = "PUBLISHING TO CLOUD...";
+    const submitBtn = document.querySelector('.btn-upload');
+    const originalText = submitBtn.innerText;
+    
+    // UI Loading State
+    submitBtn.innerText = "PUBLISHING...";
     submitBtn.disabled = true;
 
     const newProduct = {
@@ -88,13 +95,13 @@ async function saveProduct() {
         name: name,
         price: price,
         category: category,
-        mainImg: gallery[0], // Pehli photo main image hogi
-        gallery: gallery,    // Poora array
+        mainImg: gallery[0],
+        gallery: gallery, // Full array for slider
         video: video
     };
 
     try {
-        // 1. Google Sheet mein bhejein
+        // 1. Google Sheet mein bhejiyo
         await fetch(GOOGLE_SHEET_URL, {
             method: 'POST',
             mode: 'no-cors',
@@ -102,20 +109,22 @@ async function saveProduct() {
             body: JSON.stringify(newProduct)
         });
 
-        // 2. Local Storage mein backup (Turant dikhane ke liye)
+        // 2. Local Storage update (Taaki turant niche dikhe)
         let products = JSON.parse(localStorage.getItem('myProducts')) || [];
         products.push(newProduct);
         localStorage.setItem('myProducts', JSON.stringify(products));
 
-        alert("Product Successfully Published! ✅");
+        alert("Product Published Successfully! ✅");
+        
+        // Reset form and UI
         resetAdminForm();
         displayAdminProducts();
 
     } catch (error) {
-        console.error("Sheet Error!", error);
-        alert("Cloud sync mein error, par Local mein save ho gaya.");
+        console.error("Critical Error:", error);
+        alert("Could not sync with Cloud. Product saved locally only.");
     } finally {
-        submitBtn.innerText = "PUBLISH PRODUCT";
+        submitBtn.innerText = originalText;
         submitBtn.disabled = false;
     }
 }
@@ -129,10 +138,11 @@ function resetAdminForm() {
     for (let i = 1; i <= 5; i++) {
         document.getElementById(`url${i}`).value = "";
         const pre = document.getElementById(`pre${i}`);
-        const btn = document.getElementById(`btn${i}`);
-        if (pre) pre.src = "https://via.placeholder.com/40";
-        if (btn) btn.innerText = "Gallery";
+        if (pre) pre.src = "";
     }
+    // Buttons text reset
+    const fileBtns = document.querySelectorAll('.btn-file');
+    fileBtns.forEach(btn => btn.innerText = "Gallery");
 }
 
 function displayAdminProducts() {
@@ -140,7 +150,9 @@ function displayAdminProducts() {
     if (!list) return;
     
     let products = JSON.parse(localStorage.getItem('myProducts')) || [];
-    list.innerHTML = products.reverse().map(p => `
+    
+    // Naya product pehle dikhane ke liye reverse()
+    list.innerHTML = products.slice().reverse().map(p => `
         <div class="p-card">
             <button class="delete-btn" onclick="deleteProduct(${p.id})">×</button>
             <img src="${p.mainImg}" onerror="this.src='https://via.placeholder.com/150';">
@@ -151,7 +163,7 @@ function displayAdminProducts() {
 }
 
 function deleteProduct(id) {
-    if (confirm("Delete karein? (Ye sirf aapki screen se hatega, Sheet se manually hatana hoga)")) {
+    if (confirm("Delete this product from view?")) {
         let products = JSON.parse(localStorage.getItem('myProducts')) || [];
         products = products.filter(p => p.id !== id);
         localStorage.setItem('myProducts', JSON.stringify(products));
