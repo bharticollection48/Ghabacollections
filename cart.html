@@ -6,7 +6,11 @@
     <title>My Cart - Ghaba</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary: #9c27b0; --bg: #f8f9fa; }
+        :root { 
+            --primary-pink: #ff4d8d;      /* Bright Beauty Pink */
+            --light-pink: #fff0f5;        /* Soft Background Pink */
+            --bg: #fdfafb; 
+        }
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #333; }
         
         /* Header Style */
@@ -16,6 +20,8 @@
             position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.03);
         }
         
+        .logo-text { color: var(--primary-pink); font-weight: bold; font-size: 17px; }
+
         /* Cart Card Style */
         .cart-card { 
             display: flex; padding: 15px; background: white; 
@@ -24,7 +30,8 @@
         }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        .product-img { width: 90px; height: 110px; object-fit: cover; border-radius: 6px; }
+        /* Photo Size Fix */
+        .product-img { width: 90px; height: 110px; object-fit: cover; border-radius: 6px; background: #f9f9f9; }
         
         .remove-btn { 
             color: #ff4757; font-size: 13px; font-weight: bold; 
@@ -45,7 +52,7 @@
             box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
         }
         .btn-continue { 
-            background: var(--primary); color: white; border: none; 
+            background: var(--primary-pink); color: white; border: none; 
             padding: 14px 35px; border-radius: 8px; font-weight: bold; 
             font-size: 15px; cursor: pointer; transition: 0.2s;
         }
@@ -55,22 +62,22 @@
 <body>
 
     <div class="nav">
-        <i class="fa-solid fa-arrow-left" onclick="history.back()" style="font-size: 20px; margin-right: 15px; cursor: pointer;"></i>
+        <i class="fa-solid fa-arrow-left" onclick="history.back()" style="font-size: 20px; margin-right: 15px; cursor: pointer; color: #444;"></i>
         <div style="flex-grow: 1;">
-            <span style="font-weight: bold; font-size: 17px;">My Cart</span>
+            <span class="logo-text">My Cart</span>
             <div id="cartCountBadge" style="font-size: 11px; color: #777;">(0 Items)</div>
         </div>
         <div style="position: relative;">
-            <i class="fa-solid fa-cart-shopping" style="font-size: 20px; color: var(--primary);"></i>
-            <span id="floatingBadge" style="position: absolute; top: -8px; right: -10px; background: var(--primary); color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold;">0</span>
+            <i class="fa-solid fa-cart-shopping" style="font-size: 20px; color: var(--primary-pink);"></i>
+            <span id="floatingBadge" style="position: absolute; top: -8px; right: -10px; background: var(--primary-pink); color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold;">0</span>
         </div>
     </div>
 
-    <div id="emptyMessage" style="display:none; text-align: center; padding: 80px 20px; background: white; height: 100vh;">
+    <div id="emptyMessage" style="display:none; text-align: center; padding: 80px 20px; background: white; height: 100vh; box-sizing: border-box;">
         <i class="fa-solid fa-bag-shopping" style="font-size: 70px; color: #f0f0f0;"></i>
         <h3 style="color: #444; margin-top: 20px;">Aapka cart khali hai!</h3>
         <p style="color: #888; font-size: 14px;">Aaj kuch naya try karte hain?</p>
-        <button onclick="window.location.href='index.html'" style="background: var(--primary); color: white; border: none; padding: 12px 30px; border-radius: 8px; margin-top: 15px; font-weight: bold;">Shop Now</button>
+        <button onclick="window.location.href='index.html'" style="background: var(--primary-pink); color: white; border: none; padding: 12px 30px; border-radius: 8px; margin-top: 15px; font-weight: bold; cursor: pointer;">Shop Now</button>
     </div>
 
     <div id="cartItemsList"></div>
@@ -97,13 +104,12 @@
     <div id="footerSection" class="footer-action" style="display: none;">
         <div>
             <span id="footerPrice" style="font-weight: bold; font-size: 20px; display: block;">₹0</span>
-            <span style="font-size: 11px; color: var(--primary); font-weight: bold; cursor: pointer;">VIEW DETAILS</span>
+            <span style="font-size: 11px; color: var(--primary-pink); font-weight: bold; cursor: pointer;">VIEW DETAILS</span>
         </div>
         <button onclick="goToAddress()" class="btn-continue">CONTINUE</button>
     </div>
 
     <script>
-        // Global variable to keep track of total
         let currentCartTotal = 0;
 
         function loadCart() {
@@ -141,10 +147,13 @@
             cart.forEach((item, index) => {
                 currentCartTotal += Number(item.price);
                 
+                // PHOTO FIX: mainImg aur img dono check kiye ja rahe hain
+                const displayImg = item.mainImg || item.img || 'https://via.placeholder.com/150?text=No+Image';
+
                 const card = document.createElement('div');
                 card.className = "cart-card";
                 card.innerHTML = `
-                    <img src="${item.img}" class="product-img">
+                    <img src="${displayImg}" class="product-img" onerror="this.src='https://via.placeholder.com/150?text=Error'">
                     <div style="flex-grow: 1; padding-left: 15px;">
                         <h4 style="margin: 0; font-size: 15px; color: #333; line-height: 1.3;">${item.name}</h4>
                         <p style="margin: 5px 0; font-size: 12px; color: #777;">Size: Free Size • Qty: 1</p>
@@ -170,15 +179,9 @@
             loadCart();
         }
 
-        // Naya Function: Address page par jane se pehle price save karne ke liye
         function goToAddress() {
-            // 1. Cart ka total save karein
             localStorage.setItem('cartTotal', currentCartTotal);
-            
-            // 2. Buy Now item ko clear karein (kyunki hum Cart se ja rahe hain)
             localStorage.removeItem('buyNowItem');
-            
-            // 3. Redirect karein
             window.location.href = 'address.html';
         }
 
