@@ -1,135 +1,107 @@
 // --- 1. CONFIGURATION ---
-// Apni Google Apps Script ka URL yahan dalein (Wahi jo admin.js mein use kiya tha)
+// Is URL ko tabhi badlein jab aap naya Deployment karein
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbKvBicNZ6CuemvLGjFIXzsRws_K2oFlbXnzGMWyrOzLyRXlkW46rwarQRyRbV8G9x/exec"; 
 
-// Global Variables
 let allProducts = [];
 let currentData = [];
 
 /**
- * Page load hone par Google Sheets aur LocalStorage dono se data load karein
+ * Page load hote hi data mangwane ki koshish karein
  */
 window.onload = async () => {
+    // Pehle LocalStorage wala turant dikhao (user ko khali screen na dikhe)
+    const localData = localStorage.getItem('myProducts');
+    if (localData) {
+        allProducts = JSON.parse(localData);
+        currentData = [...allProducts];
+        render(allProducts);
+    }
+    // Phir Background mein Cloud se naya data lao
     await refreshData();
 };
 
 /**
- * Data ko Google Sheets (Global) aur LocalStorage (Backup) se load karne ke liye
+ * Google Sheets se Fresh Data Lane Ke Liye
  */
 async function refreshData() {
-    const grid = document.getElementById('productDisplay');
-    if(grid) grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 50px;">Ek minute, products load ho rahe hain...</div>`;
-
     try {
-        // 1. Pehle LocalStorage se fast load karein
-        allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
+        // Cache busting ke liye timestamp (taki purana data na dikhe)
+        const fetchUrl = SCRIPT_URL + (SCRIPT_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
         
-        // 2. Phir Google Sheet se naya data fetch karein (Agar link setup hai)
-        if (SCRIPT_URL !== "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
-            const response = await fetch(SCRIPT_URL);
-            const sheetData = await response.json();
-            
-            if (sheetData && sheetData.length > 0) {
-                allProducts = sheetData; // Sheet wala data primary ban jayega
-                localStorage.setItem('myProducts', JSON.stringify(allProducts)); // Backup update karein
-            }
+        const response = await fetch(fetchUrl);
+        
+        if (!response.ok) throw new Error("Network response was not ok");
+        
+        const sheetData = await response.json();
+        
+        if (sheetData && sheetData.length > 0) {
+            allProducts = sheetData;
+            currentData = [...allProducts];
+            // Naye phone ke liye save karein
+            localStorage.setItem('myProducts', JSON.stringify(allProducts));
+            render(allProducts); 
+            console.log("Cloud Data Synced!");
         }
     } catch (error) {
-        console.log("Sheet load error, using local backup:", error);
-        allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
+        console.error("Sheet load error:", error);
     }
-
-    currentData = [...allProducts];
-    render(allProducts);
     updateCartBadge();
 }
 
-// Window focus par data refresh
-window.onfocus = refreshData;
-
 /**
- * Render Function
+ * Render Function (Design & UI)
  */
 function render(data) {
     const grid = document.getElementById('productDisplay');
-    
-    if (!grid) {
-        console.error("Error: 'productDisplay' ID wala container nahi mila!");
-        return;
-    }
+    if (!grid) return;
 
     if (!data || data.length === 0) {
         grid.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 50px; color: #888;">
                 <i class="fa-solid fa-box-open" style="font-size: 40px; margin-bottom: 10px; color: #ccc;"></i>
-                <h3>Koi product nahi mila!</h3>
-                <p style="font-size: 14px;">Kripya Admin panel se naya product add karein.</p>
+                <h3>Abhi koi product live nahi hai</h3>
+                <p>Admin panel se sync hone ka intezar karein.</p>
             </div>`;
         return;
     }
 
     grid.innerHTML = '';
     
-    // Naye products ko sabse upar dikhane ke liye reverse
+    // Naye products ko upar dikhane ke liye reverse
     const displayData = [...data].reverse();
 
     displayData.forEach(p => {
-        // Price Calculation (MRP dikhane ke liye)
         const currentPrice = parseFloat(p.price) || 0;
         const originalPrice = Math.round(currentPrice * 1.4);
         
-        // Image Path Logic
+        // Image logic: sheet ke header se matching
         let imgPath = p.mainImg || p.img || (p.gallery && p.gallery[0]) || 'https://via.placeholder.com/300?text=No+Image';
 
         grid.innerHTML += `
             <div class="product-card" onclick="openProduct(${p.id})">
                 <div class="img-wrapper">
-                    <img src="${imgPath}" 
-                         alt="${p.name}" 
-                         onerror="this.src='https://via.placeholder.com/300?text=Image+Not+Available'">
-                    
+                    <img src="${imgPath}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/300?text=Image+Error'">
                     <div class="wishlist-icon" onclick="event.stopPropagation(); addToWishlist(${p.id})">
                         <i class="fa-regular fa-heart"></i>
                     </div>
                 </div>
-
                 <div class="product-info">
                     <p class="product-name">${p.name}</p>
-                    
                     <div class="price-container">
                         <span class="main-price">₹${currentPrice}</span>
                         <span class="old-price">₹${originalPrice}</span>
                         <span class="discount-badge">30% OFF</span>
                     </div>
-
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px;">
-                         <span class="rating-pill">
-                            ${p.rating || '4.2'} <i class="fa-solid fa-star" style="font-size: 8px;"></i>
-                        </span>
+                         <span class="rating-pill">4.2 <i class="fa-solid fa-star" style="font-size: 8px;"></i></span>
                         <span style="font-size: 11px; color: #888;">Free Delivery</span>
-                    </div>
-                    
-                    <div style="margin-top: 8px; font-size: 10px; color: #9c27b0; font-weight: 700; text-align: right;">
-                        Trusted Seller
                     </div>
                 </div>
             </div>`;
     });
 }
 
-// --- Logic Functions ---
-
-function updateCartBadge() {
-    const badge = document.getElementById('cartBadgeIndex');
-    if (!badge) return;
-    let cart = JSON.parse(localStorage.getItem('myCart')) || [];
-    if (cart.length > 0) {
-        badge.innerText = cart.length;
-        badge.style.display = "block";
-    } else {
-        badge.style.display = "none";
-    }
-}
+// --- Filtering & UI Logic ---
 
 function searchProduct() {
     const val = document.getElementById('searchInput').value.toLowerCase();
@@ -158,6 +130,17 @@ function openProduct(id) {
     window.location.href = `details.html?id=${id}`; 
 }
 
-function addToWishlist(id) {
-    alert("Product added to wishlist! ❤️");
+function updateCartBadge() {
+    const badge = document.getElementById('cartBadgeIndex');
+    if (!badge) return;
+    let cart = JSON.parse(localStorage.getItem('myCart')) || [];
+    badge.innerText = cart.length;
+    badge.style.display = cart.length > 0 ? "block" : "none";
 }
+
+function addToWishlist(id) {
+    alert("Wishlist mein add ho gaya! ❤️");
+}
+
+// Phone switch hone par refresh ke liye
+window.onfocus = refreshData;

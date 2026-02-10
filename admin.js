@@ -1,5 +1,6 @@
-// --- 1. CONFIGURATION (Apna URL yahan dalein) ---
+// --- 1. CONFIGURATION ---
 const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwbKvBicNZ6CuemvLGjFIXzsRws_K2oFlbXnzGMWyrOzLyRXlkW46rwarQRyRbV8G9x/exec";
+const IMGBB_API_KEY = "YOUR_IMGBB_API_KEY_HERE"; // Yahan apni ImgBB API Key dalein (Free milti hai imgbb.com par)
 
 // --- 2. Security Check ---
 window.onload = function() {
@@ -14,31 +15,46 @@ window.onload = function() {
 };
 
 /**
- * --- 3. Smart Auto-URL Function ---
- * Base64 generate karta hai (Chhoti images ke liye theek hai)
+ * --- 3. Smart Cloud Upload (ImgBB) ---
+ * Ye function photo ko online upload karke uska link input box mein bhar dega
  */
-function autoUrl(input, slot) {
+async function autoUrl(input, slot) {
     const file = input.files[0];
-    if (file) {
-        // Google Sheet ki limit ke wajah se 50KB-100KB se badi image Base64 mein issue karegi
-        if (file.size > 100 * 1024) { 
-            alert("File size bahut badi hai! Please 100KB se kam ki photo use karein ya ImgBB use karein.");
-            input.value = "";
-            return;
-        }
+    if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const generatedUrl = e.target.result;
-            document.getElementById(`url${slot}`).value = generatedUrl;
-            const previewImg = document.getElementById(`pre${slot}`);
-            if (previewImg) previewImg.src = generatedUrl;
-        };
-        reader.readAsDataURL(file);
+    // Loading dikhane ke liye
+    const previewImg = document.getElementById(`pre${slot}`);
+    if (previewImg) previewImg.style.opacity = "0.5";
+    
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+        // ImgBB par upload kar rahe hain
+        const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+            method: "POST",
+            body: formData
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            const onlineUrl = data.data.url;
+            document.getElementById(`url${slot}`).value = onlineUrl;
+            if (previewImg) {
+                previewImg.src = onlineUrl;
+                previewImg.style.opacity = "1";
+            }
+            console.log("Cloud Link Generated: " + onlineUrl);
+        } else {
+            alert("Upload fail ho gaya!");
+        }
+    } catch (error) {
+        console.error("ImgBB Error:", error);
+        alert("Internet check karein ya API Key check karein.");
     }
 }
 
-// --- 4. Save Product Logic (GOOGLE SHEETS UPDATED) ---
+// --- 4. Save Product Logic ---
 async function saveProduct() {
     const name = document.getElementById('pName').value.trim();
     const price = document.getElementById('pPrice').value.trim();
@@ -53,40 +69,45 @@ async function saveProduct() {
     const url5 = document.getElementById('url5').value;
 
     if (!name || !price || !url1) {
-        alert("Name, Price aur kam se kam Main Photo zaroori hai!");
+        alert("Name, Price aur Main Photo zaroori hai!");
         return;
     }
 
     const submitBtn = document.querySelector('.btn-upload');
-    submitBtn.innerText = "UPLOADING...";
+    submitBtn.innerText = "PUBLISHING TO CLOUD...";
     submitBtn.disabled = true;
 
-    // 1. Local Storage mein save karein (Offline backup ke liye)
-    let products = JSON.parse(localStorage.getItem('myProducts')) || [];
     const newProduct = {
         id: Date.now(),
-        name, price, category, video,
+        name: name,
+        price: price,
+        category: category,
+        video: video,
         mainImg: url1,
         gallery: [url1, url2, url3, url4, url5].filter(u => u !== "")
     };
-    products.push(newProduct);
-    localStorage.setItem('myProducts', JSON.stringify(products));
 
-    // 2. Google Sheet mein bhejein
     try {
-        await fetch(GOOGLE_SHEET_URL, {
+        // Google Sheet mein bhejein
+        const response = await fetch(GOOGLE_SHEET_URL, {
             method: 'POST',
-            mode: 'no-cors', // Important for Google Apps Script
+            mode: 'no-cors', 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newProduct)
         });
 
-        alert("Product Sheet mein save ho gaya!");
+        // Local Storage update (Sync ke liye)
+        let products = JSON.parse(localStorage.getItem('myProducts')) || [];
+        products.push(newProduct);
+        localStorage.setItem('myProducts', JSON.stringify(products));
+
+        alert("Product Globaly Publish ho gaya!");
         resetAdminForm();
         displayAdminProducts();
+        
     } catch (error) {
-        console.error("Error!", error);
-        alert("Sheet mein save nahi ho paya, par Local mein save hai.");
+        console.error("Sheet Error!", error);
+        alert("Sheet connection mein dikkat hai!");
     } finally {
         submitBtn.innerText = "PUBLISH PRODUCT";
         submitBtn.disabled = false;
@@ -95,11 +116,8 @@ async function saveProduct() {
 
 // --- 5. Supporting Functions ---
 function resetAdminForm() {
-    document.getElementById('pName').value = "";
-    document.getElementById('pPrice').value = "";
-    document.getElementById('pVideo').value = "";
+    document.getElementById('adminForm').reset(); // Form clear
     for (let i = 1; i <= 5; i++) {
-        document.getElementById(`url${i}`).value = "";
         const pre = document.getElementById(`pre${i}`);
         if (pre) pre.src = "";
     }
@@ -108,19 +126,22 @@ function resetAdminForm() {
 function displayAdminProducts() {
     const list = document.getElementById('adminProductList');
     if (!list) return;
+    
+    // Cloud se sync karne ke liye refreshData wala logic index page jaisa hona chahiye
+    // Filhal local dikha rahe hain
     let products = JSON.parse(localStorage.getItem('myProducts')) || [];
     list.innerHTML = products.reverse().map(p => `
         <div class="p-card">
             <button class="delete-btn" onclick="deleteProduct(${p.id})">×</button>
             <img src="${p.mainImg}" onerror="this.src='https://via.placeholder.com/150';">
             <p style="font-size:12px; font-weight:bold; margin: 5px 0;">${p.name}</p>
-            <p style="color:#9c27b0; font-weight:bold; margin: 0;">₹${p.price}</p>
+            <p style="color:#ff4757; font-weight:bold; margin: 0;">₹${p.price}</p>
         </div>
     `).join('');
 }
 
 function deleteProduct(id) {
-    if (confirm("Delete karein?")) {
+    if (confirm("Kya aap is product ko delete karna chahte hain? (Note: Sheet se manually delete karna hoga)")) {
         let products = JSON.parse(localStorage.getItem('myProducts')) || [];
         products = products.filter(p => p.id !== id);
         localStorage.setItem('myProducts', JSON.stringify(products));

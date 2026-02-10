@@ -125,39 +125,25 @@
 
     <script>
         // --- CONFIGURATION ---
-        // Yahan apna Google Apps Script URL zaroor daalein
-        const SCRIPT_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE"; 
+        // Yahan aapka URL pehle se updated hai
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbKvBicNZ6CuemvLGjFIXzsRws_K2oFlbXnzGMWyrOzLyRXlkW46rwarQRyRbV8G9x/exec"; 
         let allProducts = [];
         let currentData = [];
 
         const categories = [
-
             { name: "All", img: "https://liandli.in/cdn/shop/files/liewg83-4_800x.jpg?v=1686312320" },
-
             { name: "Saree", img: "https://i.pinimg.com/736x/91/25/b4/9125b4293e92ec942e0d8cb4b5d7b806.jpg" },
-
             { name: "Kurtis & Dress", img: "https://liandli.in/cdn/shop/files/liewg83-4_800x.jpg?v=1686312320" },
-
             { name: "Western Wear", img:  "https://liandli.in/cdn/shop/files/liewg83-4_800x.jpg?v=1686312320" },
-
             { name: "Men Wear", img: "https://liandli.in/cdn/shop/files/liewg83-4_800x.jpg?v=1686312320" },
-
             { name: "Combo Offers", img: "https://liandli.in/cdn/shop/files/liewg83-4_800x.jpg?v=1686312320" },
-
             { name: "Kids Wear", img: "https://liandli.in/cdn/shop/files/liewg83-4_800x.jpg?v=1686312320" },
-
             { name: "Jewellery", img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQHOvON_kLsmZ56jxrDCW-WXXpTvg1yMICHGQ&s" },
-
             { name: "Beauty", img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRYL6Ea6vreSAnhYMBs1LWnPulr6_j56BbL9Q&s" },
-
             { name: "Home & Kitchen", img: "https://static.india.com/wp-content/uploads/2024/07/WhatsApp-Image-2024-07-16-at-22.33.04.jpeg?impolicy=Medium_Widthonly&w=400" },
-
             { name: "Electronics", img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSQkhnThL1LZ8DjOytXSb-YCatwQxClub9NJQ&s" },
-
             { name: "Footwear", img: "https://www.shutterstock.com/image-photo/various-styles-male-pile-brown-260nw-1653027301.jpg" },
-
             { name: "Bags", img: "https://m.media-amazon.com/images/I/71OyvK62iCL._AC_UY1000_.jpg" }
-
         ];
 
         function loadCategories() {
@@ -174,24 +160,33 @@
 
         async function refreshData() {
             try {
-                // Step 1: Pehle LocalStorage se data dikhao (Fast loading)
-                allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
-                currentData = [...allProducts];
-                render(allProducts);
+                // Pehle LocalStorage wala turant dikhao (Fast loading)
+                const localData = localStorage.getItem('myProducts');
+                if (localData) {
+                    allProducts = JSON.parse(localData);
+                    currentData = [...allProducts];
+                    render(allProducts);
+                }
 
-                // Step 2: Online Fetch karo (Sync for all users)
-                if (SCRIPT_URL && SCRIPT_URL !== "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
-                    const response = await fetch(SCRIPT_URL);
+                // Cloud se naya data fetch karo (Sync for all devices)
+                if (SCRIPT_URL) {
+                    // Cache bust karne ke liye timestamp use kiya hai taaki fresh data mile
+                    const response = await fetch(SCRIPT_URL + "?t=" + new Date().getTime());
                     const sheetData = await response.json();
+                    
                     if (sheetData && sheetData.length > 0) {
                         allProducts = sheetData;
                         localStorage.setItem('myProducts', JSON.stringify(allProducts));
                         currentData = [...allProducts];
                         render(allProducts);
+                        console.log("Cloud sync successful!");
                     }
                 }
             } catch (e) {
                 console.log("Data Sync Error:", e);
+                // Error hone par local data se chalne do
+                allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
+                render(allProducts);
             }
             updateCartBadge();
             updateWishlistBadge();
@@ -199,6 +194,8 @@
 
         function render(data) {
             const grid = document.getElementById('productDisplay');
+            if (!grid) return;
+            
             if (!data || data.length === 0) {
                 grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px;"><h3>Koi product nahi mila!</h3></div>';
                 return;
@@ -209,7 +206,7 @@
             grid.innerHTML = [...data].reverse().map(p => {
                 const price = parseFloat(p.price) || 0;
                 const oldPrice = Math.round(price * 1.4);
-                const img = p.mainImg || p.img || 'https://via.placeholder.com/300';
+                const img = p.mainImg || p.img || (p.gallery && p.gallery[0]) || 'https://via.placeholder.com/300';
                 const isFav = wishlist.includes(p.id);
 
                 return `
@@ -272,6 +269,7 @@
 
         function updateCartBadge() {
             const badge = document.getElementById('cartBadgeIndex');
+            if (!badge) return;
             let cart = JSON.parse(localStorage.getItem('myCart')) || [];
             badge.innerText = cart.length;
             badge.style.display = cart.length > 0 ? "block" : "none";
@@ -298,7 +296,8 @@
         }
 
         window.onclick = () => {
-            document.getElementById('menuDropdown').style.display = 'none';
+            const dropdown = document.getElementById('menuDropdown');
+            if (dropdown) dropdown.style.display = 'none';
         }
 
         window.onload = () => {
@@ -309,6 +308,7 @@
         window.onfocus = () => {
             updateCartBadge();
             updateWishlistBadge();
+            refreshData(); // Jab app vapas kholein toh refresh ho jaye
         };
     </script>
 </body>

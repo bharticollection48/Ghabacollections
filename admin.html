@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meesho Admin - Smart Upload</title>
+    <title>Ghaba Admin - Cloud Upload</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --meesho-pink: #9c27b0; --bg: #f0f2f5; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; } 
+        :root { --meesho-pink: #ff4757; --bg: #f0f2f5; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: none; } /* Password ke baad dikhega */
         .admin-header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top:0; z-index:100; }
         .container { max-width: 900px; margin: 20px auto; padding: 15px; }
         .upload-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
@@ -15,112 +15,125 @@
         label { display: block; font-size: 13px; color: #666; margin-bottom: 5px; font-weight: 600; }
         input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
         
-        .media-box { background: #fdf7fe; padding: 15px; border-radius: 8px; border: 1px dashed var(--meesho-pink); margin-bottom: 15px; }
+        .media-box { background: #fffafb; padding: 15px; border-radius: 8px; border: 1px dashed var(--meesho-pink); margin-bottom: 15px; }
         .media-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; margin-bottom: 10px; align-items: center; }
         
         .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; }
         .file-input-wrapper input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-        .btn-file { background: #fff; border: 1px solid var(--meesho-pink); color: var(--meesho-pink); padding: 10px; border-radius: 5px; display: block; text-align: center; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .btn-file { background: #fff; border: 1px solid var(--meesho-pink); color: var(--meesho-pink); padding: 10px; border-radius: 5px; display: block; text-align: center; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-file:hover { background: var(--meesho-pink); color: white; }
 
-        .thumb-preview { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; background: #eee; border: 1px solid #ddd; }
+        .thumb-preview { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; background: #eee; border: 1px solid #ddd; transition: 0.3s; }
 
-        .btn-upload { width: 100%; background: var(--meesho-pink); color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 10px rgba(156, 39, 176, 0.3); }
+        .btn-upload { width: 100%; background: var(--meesho-pink); color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 10px rgba(255, 71, 87, 0.3); transition: 0.3s; }
+        .btn-upload:disabled { background: #ccc; box-shadow: none; cursor: not-allowed; }
+        
         .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; margin-top: 20px; }
         .p-card { background: white; padding: 10px; border-radius: 8px; border: 1px solid #eee; position: relative; text-align: center; }
         .p-card img { width: 100%; height: 130px; object-fit: cover; border-radius: 5px; }
-        .delete-btn { position: absolute; top: 5px; right: 5px; background: #ff4757; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; z-index: 10; }
+        .delete-btn { position: absolute; top: 5px; right: 5px; background: #ff4757; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; z-index: 10; font-weight: bold; }
+        
+        /* Loading Animation */
+        .uploading-shimmer { opacity: 0.5; filter: grayscale(1); pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div class="admin-header">
-        <h2><i class="fa-solid fa-user-shield"></i> Meesho Admin</h2>
+        <h2 style="color: var(--meesho-pink);"><i class="fa-solid fa-user-shield"></i> Ghaba Admin</h2>
         <button onclick="logout()" style="background:none; border:1px solid #ddd; padding:5px 15px; border-radius:5px; cursor:pointer;">Logout</button>
     </div>
 
     <div class="container">
         <div class="upload-card">
-            <h3 style="margin-top:0; color:#333;">Add New Product</h3>
+            <h3 style="margin-top:0; color:#333;">Add New Product to Cloud</h3>
             
-            <div class="input-group">
-                <label>Product Name*</label>
-                <input type="text" id="pName" placeholder="Ex: Designer Saree">
-            </div>
+            <form id="adminForm" onsubmit="event.preventDefault();">
+                <div class="input-group">
+                    <label>Product Name*</label>
+                    <input type="text" id="pName" placeholder="Ex: Designer Saree">
+                </div>
 
-            <div style="display: flex; gap: 10px;">
-                <div class="input-group" style="flex: 1;">
-                    <label>Price (₹)*</label>
-                    <input type="number" id="pPrice" placeholder="500">
+                <div style="display: flex; gap: 10px;">
+                    <div class="input-group" style="flex: 1;">
+                        <label>Price (₹)*</label>
+                        <input type="number" id="pPrice" placeholder="500">
+                    </div>
+                    <div class="input-group" style="flex: 1;">
+                        <label>Category*</label>
+                        <select id="pCategory">
+                            <option value="Saree">Saree</option>
+                            <option value="Kurtis & Dress">Kurtis & Dress</option>
+                            <option value="Western Wear">Western Wear</option>
+                            <option value="Men Wear">Men Wear</option>
+                            <option value="Combo Offers">Combo Offers</option>
+                            <option value="Kids Wear">Kids Wear</option>
+                            <option value="Jewellery">Jewellery</option>
+                            <option value="Beauty">Beauty</option>
+                            <option value="Home & Kitchen">Home & Kitchen</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Footwear">Footwear</option>
+                            <option value="Bags & Accessories">Bags & Accessories</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="input-group" style="flex: 1;">
-                    <label>Category*</label>
-                    <select id="pCategory">
-                        <option value="Saree">Saree</option>
-                        <option value="Kurtis & Dress">Kurtis & Dress</option>
-                        <option value="Western Wear">Western Wear</option>
-                        <option value="Men Wear">Men Wear</option>
-                        <option value="Combo Offers">Combo Offers</option>
-                        <option value="Kids Wear">Kids Wear</option>
-                        <option value="Jewellery">Jewellery</option>
-                        <option value="Beauty">Beauty</option>
-                        <option value="Home & Kitchen">Home & Kitchen</option>
-                        <option value="Electronics">Electronics</option>
-                        <option value="Footwear">Footwear</option>
-                        <option value="Bags & Accessories">Bags & Accessories</option>
-                    </select>
-                </div>
-            </div>
 
-            <label><i class="fa-solid fa-images"></i> Media (File Select karte hi URL ban jayega)</label>
-            <div class="media-box">
-                <div class="media-row">
-                    <input type="text" id="url1" placeholder="Image 1 URL (Main)*">
-                    <div class="file-input-wrapper">
-                        <span class="btn-file">Gallery</span>
-                        <input type="file" accept="image/*" onchange="autoUrl(this, 1)">
+                <label><i class="fa-solid fa-cloud-arrow-up"></i> Media (Image upload hote hi link ban jayega)</label>
+                <div class="media-box">
+                    <div class="media-row" id="row1">
+                        <input type="text" id="url1" placeholder="Main Image URL*" readonly>
+                        <div class="file-input-wrapper">
+                            <span class="btn-file" id="btn1">Gallery</span>
+                            <input type="file" accept="image/*" onchange="autoUrl(this, 1)">
+                        </div>
+                        <img id="pre1" class="thumb-preview" src="https://via.placeholder.com/40">
                     </div>
-                    <img id="pre1" class="thumb-preview" src="">
-                </div>
-                <div class="media-row">
-                    <input type="text" id="url2" placeholder="Image 2 URL">
-                    <div class="file-input-wrapper">
-                        <span class="btn-file">Gallery</span>
-                        <input type="file" accept="image/*" onchange="autoUrl(this, 2)">
+                    <div class="media-row" id="row2">
+                        <input type="text" id="url2" placeholder="Image 2 URL" readonly>
+                        <div class="file-input-wrapper">
+                            <span class="btn-file" id="btn2">Gallery</span>
+                            <input type="file" accept="image/*" onchange="autoUrl(this, 2)">
+                        </div>
+                        <img id="pre2" class="thumb-preview" src="https://via.placeholder.com/40">
                     </div>
-                    <img id="pre2" class="thumb-preview" src="">
-                </div>
-                <div class="media-row">
-                    <input type="text" id="url3" placeholder="Image 3 URL">
-                    <div class="file-input-wrapper">
-                        <span class="btn-file">Gallery</span>
-                        <input type="file" accept="image/*" onchange="autoUrl(this, 3)">
+                    <div class="media-row" id="row3">
+                        <input type="text" id="url3" placeholder="Image 3 URL" readonly>
+                        <div class="file-input-wrapper">
+                            <span class="btn-file" id="btn3">Gallery</span>
+                            <input type="file" accept="image/*" onchange="autoUrl(this, 3)">
+                        </div>
+                        <img id="pre3" class="thumb-preview" src="https://via.placeholder.com/40">
                     </div>
-                    <img id="pre3" class="thumb-preview" src="">
-                </div>
-                <div class="media-row">
-                    <input type="text" id="url4" placeholder="Image 4 URL">
-                    <div class="file-input-wrapper">
-                        <span class="btn-file">Gallery</span>
-                        <input type="file" accept="image/*" onchange="autoUrl(this, 4)">
+                    <div class="media-row" id="row4">
+                        <input type="text" id="url4" placeholder="Image 4 URL" readonly>
+                        <div class="file-input-wrapper">
+                            <span class="btn-file" id="btn4">Gallery</span>
+                            <input type="file" accept="image/*" onchange="autoUrl(this, 4)">
+                        </div>
+                        <img id="pre4" class="thumb-preview" src="https://via.placeholder.com/40">
                     </div>
-                    <img id="pre4" class="thumb-preview" src="">
-                </div>
-                <div class="media-row">
-                    <input type="text" id="url5" placeholder="Image 5 URL">
-                    <div class="file-input-wrapper">
-                        <span class="btn-file">Gallery</span>
-                        <input type="file" accept="image/*" onchange="autoUrl(this, 5)">
+                    <div class="media-row" id="row5">
+                        <input type="text" id="url5" placeholder="Image 5 URL" readonly>
+                        <div class="file-input-wrapper">
+                            <span class="btn-file" id="btn5">Gallery</span>
+                            <input type="file" accept="image/*" onchange="autoUrl(this, 5)">
+                        </div>
+                        <img id="pre5" class="thumb-preview" src="https://via.placeholder.com/40">
                     </div>
-                    <img id="pre5" class="thumb-preview" src="">
+                    <div class="input-group" style="margin-top:10px;">
+                        <label>YouTube Video Link (Optional)</label>
+                        <input type="text" id="pVideo" placeholder="https://youtube.com/watch?v=...">
+                    </div>
                 </div>
-                <input type="text" id="pVideo" placeholder="Video URL (Optional)">
-            </div>
 
-            <button class="btn-upload" onclick="saveProduct()">PUBLISH PRODUCT</button>
+                <button class="btn-upload" id="publishBtn" onclick="saveProduct()">PUBLISH TO GHABA CLOUD</button>
+            </form>
         </div>
 
         <div class="preview-section">
-            <h3 style="margin-top:30px; color: var(--meesho-pink);">Live Inventory</h3>
+            <h3 style="margin-top:30px; color: var(--meesho-pink);"><i class="fa-solid fa-boxes-stacked"></i> Live Inventory</h3>
+            <p style="font-size: 12px; color: #888;">Naye products yahan dikhenge (Local Sync)</p>
+            <hr border="0" style="border-top:1px solid #ddd;">
             <div class="preview-grid" id="adminProductList"></div>
         </div>
     </div>
