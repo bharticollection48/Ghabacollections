@@ -1,6 +1,6 @@
 // --- 1. CONFIGURATION ---
 // Apni Google Apps Script ka URL yahan dalein (Wahi jo admin.js mein use kiya tha)
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxUS-o9xhW2Cy--1HA7PEEAk_2Z6UGEzp4zMiEOBAqG_p3Wa3OM4jxoMhXDJtd4sJcw/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbKvBicNZ6CuemvLGjFIXzsRws_K2oFlbXnzGMWyrOzLyRXlkW46rwarQRyRbV8G9x/exec"; 
 
 // Global Variables
 let allProducts = [];

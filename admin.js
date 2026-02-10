@@ -1,5 +1,5 @@
 // --- 1. CONFIGURATION (Apna URL yahan dalein) ---
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbxUS-o9xhW2Cy--1HA7PEEAk_2Z6UGEzp4zMiEOBAqG_p3Wa3OM4jxoMhXDJtd4sJcw/exec";
+const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwbKvBicNZ6CuemvLGjFIXzsRws_K2oFlbXnzGMWyrOzLyRXlkW46rwarQRyRbV8G9x/exec";
 
 // --- 2. Security Check ---
 window.onload = function() {
