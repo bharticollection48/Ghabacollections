@@ -1,5 +1,5 @@
 // --- 1. CONFIGURATION ---
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbKvBicNZ6CuemvLGjFIXzsRws_K2oFlbXnzGMWyrOzLyRXlkW46rwarQRyRbV8G9x/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwkEy3fbcW6WNJGnEQHGyCif4d-FSp5RMSywpVWGoRZeb0sQcuNB9B4g2V-sfp-TB-N/exec";
 
 // 1. URL se ID nikalna
 const urlParams = new URLSearchParams(window.location.search);
