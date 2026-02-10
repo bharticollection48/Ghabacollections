@@ -1,71 +1,78 @@
 // --- 1. CONFIGURATION ---
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwkEy3fbcW6WNJGnEQHGyCif4d-FSp5RMSywpVWGoRZeb0sQcuNB9B4g2V-sfp-TB-N/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyyNOdayFKPMlXdKB5FXsOFPRpnVE8es9r9y4N0M1F_PumVp-fO1nq47nMLqiLMt1pe/exec";
 
-// 1. URL se ID nikalna
+// URL se Product ID nikalna
 const urlParams = new URLSearchParams(window.location.search);
 const productId = urlParams.get('id');
 
 async function initDetails() {
-    let allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
+    console.log("Fetching product for ID:", productId);
     
-    // Agar local mein product nahi mila, toh cloud se fetch karo
-    if (allProducts.length === 0) {
-        try {
-            const response = await fetch(SCRIPT_URL);
-            allProducts = await response.json();
-            localStorage.setItem('myProducts', JSON.stringify(allProducts));
-        } catch (e) {
-            console.log("Fetch Error:", e);
-        }
+    let allProducts = [];
+
+    try {
+        // STEP 1: Hamesha Google Sheet se fresh data mangwayein
+        // Cache bypass karne ke liye timestamp (?t=...) add kiya hai
+        const response = await fetch(SCRIPT_URL + "?t=" + new Date().getTime());
+        allProducts = await response.json();
+        
+        // STEP 2: Milte hi LocalStorage update karein
+        localStorage.setItem('myProducts', JSON.stringify(allProducts));
+        console.log("Data fetched from Google Sheet");
+
+    } catch (e) {
+        console.log("Cloud fetch failed, trying local storage...", e);
+        // STEP 3: Agar internet nahi hai, tabhi local storage use karein
+        allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
     }
 
+    // Product dhoondhein
     const product = allProducts.find(p => p.id == productId);
 
     if (product) {
         renderProduct(product);
     } else {
-        document.body.innerHTML = `
-            <div style="text-align:center; padding:50px;">
-                <i class="fa-solid fa-circle-exclamation" style="font-size:50px; color:#ccc;"></i>
-                <h2>Product Not Found!</h2>
-                <button onclick="window.location.href='index.html'" style="padding:10px 20px; background:#ff4757; color:white; border:none; border-radius:5px;">Go Back</button>
-            </div>`;
+        showError();
     }
 }
 
 function renderProduct(product) {
-    // Basic Details
+    // 1. Basic Details
     document.getElementById('detName').innerText = product.name;
     document.getElementById('detPrice').innerText = product.price;
     document.getElementById('detCat').innerText = product.category || "General";
 
-    // Media Slider Logic
+    // 2. Media Slider Logic
     const slider = document.getElementById('mediaSlider');
     const dotsContainer = document.getElementById('sliderDots');
     
     let mediaHTML = '';
     let dotsHTML = '';
+    let galleryArray = [];
 
-    // 1. Photo Gallery Setup
-    // Admin se 'gallery' array aata hai, usse loop karein
-    if (product.gallery && product.gallery.length > 0) {
-        product.gallery.forEach((img, index) => {
-            if(img && img.trim() !== "") {
-                mediaHTML += `
-                    <div class="slider-item">
-                        <img src="${img}" onerror="this.src='https://via.placeholder.com/400?text=Image+Not+Found'">
-                    </div>`;
-                dotsHTML += `<div class="dot ${index === 0 ? 'active' : ''}"></div>`;
-            }
-        });
-    } else {
-        // Fallback: Agar gallery array na ho toh mainImg dikhao
-        const fallbackImg = product.mainImg || product.img || 'https://via.placeholder.com/400';
-        mediaHTML += `<div class="slider-item"><img src="${fallbackImg}"></div>`;
-        dotsHTML += `<div class="dot active"></div>`;
+    // Photo format fix (Sheet se data string ya array dono ho sakta hai)
+    if (Array.isArray(product.gallery)) {
+        galleryArray = product.gallery;
+    } else if (typeof product.gallery === 'string') {
+        galleryArray = product.gallery.split(',').filter(img => img.trim() !== "");
     }
 
-    // 2. Video Slide (Agar video URL hai)
+    // Agar gallery khali hai toh mainImg fallback
+    if (galleryArray.length === 0) {
+        const fallback = product.mainImg || product.img || 'https://via.placeholder.com/400';
+        galleryArray = [fallback];
+    }
+
+    // Build Slider HTML
+    galleryArray.forEach((img, index) => {
+        mediaHTML += `
+            <div class="slider-item">
+                <img src="${img.trim()}" onerror="this.src='https://via.placeholder.com/400?text=Image+Not+Found'">
+            </div>`;
+        dotsHTML += `<div class="dot ${index === 0 ? 'active' : ''}"></div>`;
+    });
+
+    // 3. Video Slide
     if (product.video && product.video.trim() !== "") {
         mediaHTML += `
             <div class="slider-item">
@@ -80,29 +87,36 @@ function renderProduct(product) {
     slider.innerHTML = mediaHTML;
     dotsContainer.innerHTML = dotsHTML;
 
-    // Dots indicator update logic
-    slider.addEventListener('scroll', () => {
+    // Scroll Indicator Logic
+    slider.onscroll = () => {
         const scrollIndex = Math.round(slider.scrollLeft / slider.clientWidth);
         const dots = document.querySelectorAll('.dot');
-        dots.forEach((dot, i) => {
-            dot.classList.toggle('active', i === scrollIndex);
-        });
-    });
+        dots.forEach((dot, i) => dot.classList.toggle('active', i === scrollIndex));
+    };
 }
 
-// Add to Cart Logic
+function showError() {
+    document.body.innerHTML = `
+        <div style="text-align:center; padding:100px 20px; font-family:sans-serif;">
+            <h2 style="color:#666;">Product Not Found!</h2>
+            <p>Yeh product shayad hata diya gaya hai ya link galat hai.</p>
+            <a href="index.html" style="color:#9c27b0; text-decoration:none; font-weight:bold;">Back to Shop</a>
+        </div>`;
+}
+
+// Add to Cart / Buy Now (Hamesha fresh local storage se data lein)
+function getProductData() {
+    const products = JSON.parse(localStorage.getItem('myProducts')) || [];
+    return products.find(p => p.id == productId);
+}
+
 function addToCart() {
-    const allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
-    const product = allProducts.find(p => p.id == productId);
-    
+    const product = getProductData();
     if (!product) return;
 
     let cart = JSON.parse(localStorage.getItem('myCart')) || [];
-    
-    // Check karein ki product pehle se cart mein toh nahi
-    const exists = cart.find(item => item.id == product.id);
-    if (exists) {
-        alert("Ye product pehle se Bag mein hai! 😊");
+    if (cart.find(item => item.id == product.id)) {
+        alert("Pehle se Bag mein hai! 😊");
     } else {
         cart.push(product);
         localStorage.setItem('myCart', JSON.stringify(cart));
@@ -111,14 +125,11 @@ function addToCart() {
 }
 
 function buyNow() {
-    // WhatsApp Order link banayein
-    const allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
-    const product = allProducts.find(p => p.id == productId);
+    const product = getProductData();
     if(product) {
         const text = `Hi, I want to buy: ${product.name} (ID: ${product.id}) for ₹${product.price}`;
         window.open(`https://wa.me/91XXXXXXXXXX?text=${encodeURIComponent(text)}`, '_blank');
     }
 }
 
-// Start the page
 window.onload = initDetails;

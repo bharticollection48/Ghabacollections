@@ -1,6 +1,6 @@
 // --- 1. CONFIGURATION ---
 // Apni Google Sheet ka naya Deployment URL yahan paste karein
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwbEy3fbcW6WNJGnEQHGyCif4d-FSp5RMSywpVWGoRZeb0sQcuNB9B4g2V-sfp-TB-N/exec";
+const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbyyNOdayFKPMlXdKB5FXsOFPRpnVE8es9r9y4N0M1F_PumVp-fO1nq47nMLqiLMt1pe/exec";
 const IMGBB_API_KEY = "9e2c45e20b2a686c19d3c0cc9cf06f9b"; 
 
 // --- 2. Security Check (Login) ---
