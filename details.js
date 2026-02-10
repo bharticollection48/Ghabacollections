@@ -1,45 +1,75 @@
+// --- 1. CONFIGURATION ---
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbKvBicNZ6CuemvLGjFIXzsRws_K2oFlbXnzGMWyrOzLyRXlkW46rwarQRyRbV8G9x/exec";
+
 // 1. URL se ID nikalna
 const urlParams = new URLSearchParams(window.location.search);
 const productId = urlParams.get('id');
 
-// 2. LocalStorage se Product dhoondna
-const allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
-const product = allProducts.find(p => p.id == productId);
+async function initDetails() {
+    let allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
+    
+    // Agar local mein product nahi mila, toh cloud se fetch karo
+    if (allProducts.length === 0) {
+        try {
+            const response = await fetch(SCRIPT_URL);
+            allProducts = await response.json();
+            localStorage.setItem('myProducts', JSON.stringify(allProducts));
+        } catch (e) {
+            console.log("Fetch Error:", e);
+        }
+    }
 
-if (product) {
+    const product = allProducts.find(p => p.id == productId);
+
+    if (product) {
+        renderProduct(product);
+    } else {
+        document.body.innerHTML = `
+            <div style="text-align:center; padding:50px;">
+                <i class="fa-solid fa-circle-exclamation" style="font-size:50px; color:#ccc;"></i>
+                <h2>Product Not Found!</h2>
+                <button onclick="window.location.href='index.html'" style="padding:10px 20px; background:#ff4757; color:white; border:none; border-radius:5px;">Go Back</button>
+            </div>`;
+    }
+}
+
+function renderProduct(product) {
     // Basic Details
     document.getElementById('detName').innerText = product.name;
     document.getElementById('detPrice').innerText = product.price;
     document.getElementById('detCat').innerText = product.category || "General";
 
-    // Media (Images + Video) Combine karna
+    // Media Slider Logic
     const slider = document.getElementById('mediaSlider');
     const dotsContainer = document.getElementById('sliderDots');
     
-    // Gallery ki saari photos
     let mediaHTML = '';
     let dotsHTML = '';
 
-    // 1. Pehle saari Images load karein
+    // 1. Photo Gallery Setup
+    // Admin se 'gallery' array aata hai, usse loop karein
     if (product.gallery && product.gallery.length > 0) {
         product.gallery.forEach((img, index) => {
-            mediaHTML += `
-                <div class="slider-item">
-                    <img src="${img}" onerror="this.src='https://via.placeholder.com/400?text=Image+Not+Found'">
-                </div>`;
-            dotsHTML += `<div class="dot ${index === 0 ? 'active' : ''}"></div>`;
+            if(img && img.trim() !== "") {
+                mediaHTML += `
+                    <div class="slider-item">
+                        <img src="${img}" onerror="this.src='https://via.placeholder.com/400?text=Image+Not+Found'">
+                    </div>`;
+                dotsHTML += `<div class="dot ${index === 0 ? 'active' : ''}"></div>`;
+            }
         });
     } else {
-        // Agar gallery nahi hai toh mainImg dikhao
-        mediaHTML += `<div class="slider-item"><img src="${product.mainImg || product.img}"></div>`;
+        // Fallback: Agar gallery array na ho toh mainImg dikhao
+        const fallbackImg = product.mainImg || product.img || 'https://via.placeholder.com/400';
+        mediaHTML += `<div class="slider-item"><img src="${fallbackImg}"></div>`;
         dotsHTML += `<div class="dot active"></div>`;
     }
 
-    // 2. Agar Video URL hai toh use bhi slide mein add karein
-    if (product.video) {
+    // 2. Video Slide (Agar video URL hai)
+    if (product.video && product.video.trim() !== "") {
         mediaHTML += `
             <div class="slider-item">
-                <video controls style="width:100%; height:100%;">
+                <video controls style="width:100%; height:100%; object-fit:contain; background:#000;">
                     <source src="${product.video}" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
@@ -50,7 +80,7 @@ if (product) {
     slider.innerHTML = mediaHTML;
     dotsContainer.innerHTML = dotsHTML;
 
-    // Dots ko scroll ke saath move karne ka logic
+    // Dots indicator update logic
     slider.addEventListener('scroll', () => {
         const scrollIndex = Math.round(slider.scrollLeft / slider.clientWidth);
         const dots = document.querySelectorAll('.dot');
@@ -58,19 +88,37 @@ if (product) {
             dot.classList.toggle('active', i === scrollIndex);
         });
     });
-
-} else {
-    document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Product Not Found!</h2>";
 }
 
-// Add to Cart Simple Logic
+// Add to Cart Logic
 function addToCart() {
+    const allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
+    const product = allProducts.find(p => p.id == productId);
+    
+    if (!product) return;
+
     let cart = JSON.parse(localStorage.getItem('myCart')) || [];
-    cart.push(product);
-    localStorage.setItem('myCart', JSON.stringify(cart));
-    alert("Bag mein add ho gaya! ✅");
+    
+    // Check karein ki product pehle se cart mein toh nahi
+    const exists = cart.find(item => item.id == product.id);
+    if (exists) {
+        alert("Ye product pehle se Bag mein hai! 😊");
+    } else {
+        cart.push(product);
+        localStorage.setItem('myCart', JSON.stringify(cart));
+        alert("Bag mein add ho gaya! ✅");
+    }
 }
 
 function buyNow() {
-    alert("Redirecting to payment...");
+    // WhatsApp Order link banayein
+    const allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
+    const product = allProducts.find(p => p.id == productId);
+    if(product) {
+        const text = `Hi, I want to buy: ${product.name} (ID: ${product.id}) for ₹${product.price}`;
+        window.open(`https://wa.me/91XXXXXXXXXX?text=${encodeURIComponent(text)}`, '_blank');
+    }
 }
+
+// Start the page
+window.onload = initDetails;
