@@ -9,13 +9,34 @@
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="details.css">
+    <style>
+        /* Size Section Styles */
+        .size-selection-area { margin-top: 20px; display: none; }
+        .size-label { font-weight: bold; margin-bottom: 10px; font-size: 14px; color: #333; }
+        .size-options { display: flex; gap: 8px; flex-wrap: wrap; }
+        .size-btn {
+            border: 1.5px solid #ddd;
+            background: white;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            min-width: 45px;
+        }
+        .size-btn.active {
+            border-color: #9c27b0;
+            background: #9c27b0;
+            color: white;
+        }
+    </style>
 </head>
 <body>
 
     <header>
         <i class="fa-solid fa-chevron-left" onclick="history.back()"></i>
         <h3 style="font-weight: 800; color: #9c27b0;">GHABA</h3>
-        <div onclick="window.location.href='cart.html'" style="position: relative;">
+        <div onclick="window.location.href='cart.html'" style="position: relative; cursor: pointer;">
             <i class="fa-solid fa-bag-shopping" style="font-size: 22px;"></i>
             <span id="badge" style="position: absolute; top:-5px; right:-8px; background:#9c27b0; color:white; border-radius:50%; padding:2px 6px; font-size:10px; display:none;">0</span>
         </div>
@@ -36,6 +57,11 @@
             <span class="current-price" id="pPrice">₹0</span>
             <span class="old-price" id="pOld">₹0</span>
             <span class="off-tag">30% OFF</span>
+        </div>
+
+        <div id="sizeArea" class="size-selection-area">
+            <div class="size-label">Select Size:</div>
+            <div id="sizeOptions" class="size-options"></div>
         </div>
 
         <div style="background: #fdf2ff; padding: 15px; border-radius: 12px; margin: 20px 0;">
@@ -67,6 +93,7 @@
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
         const product = (JSON.parse(localStorage.getItem('myProducts')) || []).find(x => x.id == id);
+        let selectedSize = "";
 
         if (product) {
             document.getElementById('pName').innerText = product.name;
@@ -74,12 +101,38 @@
             document.getElementById('pOld').innerText = '₹' + Math.round(product.price * 1.4);
             document.getElementById('pCat').innerText = product.category || "General";
 
+            // --- Size Logic Implementation ---
+            const sizeArea = document.getElementById('sizeArea');
+            const sizeOptions = document.getElementById('sizeOptions');
+            const category = product.category;
+
+            let sizes = [];
+            if (category === "Footwear") {
+                sizes = ["6", "7", "8", "9", "10"];
+                sizeArea.style.display = "block";
+            } else if (["Combo Offers", "Western Wear", "Kurtis & Dress"].includes(category)) {
+                sizes = ["S", "M", "L", "XL", "XXL"];
+                sizeArea.style.display = "block";
+            }
+
+            sizes.forEach(sz => {
+                const btn = document.createElement('button');
+                btn.className = 'size-btn';
+                btn.innerText = sz;
+                btn.onclick = () => {
+                    document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedSize = sz;
+                };
+                sizeOptions.appendChild(btn);
+            });
+
+            // Media Rendering
             const mainDisplay = document.getElementById('mainDisplay');
             const mainBox = document.getElementById('mainBox');
             const thumbRow = document.getElementById('thumbRow');
             
             mainDisplay.src = product.mainImg || product.img;
-
             let photos = product.gallery?.length ? product.gallery : [product.mainImg || product.img];
 
             photos.forEach((src, i) => {
@@ -107,19 +160,31 @@
                 thumbRow.appendChild(vThumb);
             }
 
-            // ADD TO CART: Add bhi karega aur My Cart page bhi kholega
+            // Buttons Logic with Size Validation
             document.getElementById('addToCartBtn').onclick = () => {
-                let cart = JSON.parse(localStorage.getItem('myCart')) || [];
-                if (!cart.some(it => it.id == product.id)) cart.push(product);
-                localStorage.setItem('myCart', JSON.stringify(cart));
+                if (sizeArea.style.display === "block" && !selectedSize) {
+                    alert("Kripya Size select karein! 📏");
+                    return;
+                }
                 
-                // My Cart page par redirect
+                let cart = JSON.parse(localStorage.getItem('myCart')) || [];
+                let productToStore = {...product, size: selectedSize};
+                
+                if (!cart.some(it => it.id == product.id && it.size == selectedSize)) {
+                    cart.push(productToStore);
+                }
+                
+                localStorage.setItem('myCart', JSON.stringify(cart));
                 window.location.href = 'cart.html';
             };
 
-            // BUY NOW: Ye sirf isi product ko "buyNowItem" bana kar address page pe bhejega
             document.getElementById('buyNowBtn').onclick = () => {
-                localStorage.setItem('buyNowItem', JSON.stringify(product));
+                if (sizeArea.style.display === "block" && !selectedSize) {
+                    alert("Kripya Size select karein! 📏");
+                    return;
+                }
+                let productToStore = {...product, size: selectedSize};
+                localStorage.setItem('buyNowItem', JSON.stringify(productToStore));
                 window.location.href = 'address.html'; 
             };
         }
