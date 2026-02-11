@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Address - Ghaba</title>
+    <title>Ghaba - Quality Shopping</title>
+    
+    <link rel="icon" type="image/png" href="https://img.freepik.com/premium-vector/shopping-logo-vector-icon_636116-200.jpg?semt=ais_hybrid&w=740&q=80"> 
     <link rel="stylesheet" href="address.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -65,15 +67,49 @@
             <label>State*</label>
             <select id="custState">
                 <option value="">Select State</option>
-                <option value="Uttar Pradesh">Uttar Pradesh</option>
-                <option value="Madhya Pradesh">Madhya Pradesh</option>
-                <option value="Rajasthan">Rajasthan</option>
-                <option value="Delhi">Delhi</option>
+
+                <!-- States -->
+                <option value="Andhra Pradesh">Andhra Pradesh</option>
+                <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                <option value="Assam">Assam</option>
                 <option value="Bihar">Bihar</option>
-                <option value="Maharashtra">Maharashtra</option>
+                <option value="Chhattisgarh">Chhattisgarh</option>
+                <option value="Goa">Goa</option>
                 <option value="Gujarat">Gujarat</option>
                 <option value="Haryana">Haryana</option>
+                <option value="Himachal Pradesh">Himachal Pradesh</option>
+                <option value="Jharkhand">Jharkhand</option>
+                <option value="Karnataka">Karnataka</option>
+                <option value="Kerala">Kerala</option>
+                <option value="Madhya Pradesh">Madhya Pradesh</option>
+                <option value="Maharashtra">Maharashtra</option>
+                <option value="Manipur">Manipur</option>
+                <option value="Meghalaya">Meghalaya</option>
+                <option value="Mizoram">Mizoram</option>
+                <option value="Nagaland">Nagaland</option>
+                <option value="Odisha">Odisha</option>
                 <option value="Punjab">Punjab</option>
+                <option value="Rajasthan">Rajasthan</option>
+                <option value="Sikkim">Sikkim</option>
+                <option value="Tamil Nadu">Tamil Nadu</option>
+                <option value="Telangana">Telangana</option>
+                <option value="Tripura">Tripura</option>
+                <option value="Uttar Pradesh">Uttar Pradesh</option>
+                <option value="Uttarakhand">Uttarakhand</option>
+                <option value="West Bengal">West Bengal</option>
+
+                <!-- Union Territories -->
+                <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                <option value="Chandigarh">Chandigarh</option>
+                <option value="Dadra and Nagar Haveli and Daman and Diu">
+                    Dadra and Nagar Haveli and Daman and Diu
+                </option>
+                <option value="Delhi">Delhi</option>
+                <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                <option value="Ladakh">Ladakh</option>
+                <option value="Lakshadweep">Lakshadweep</option>
+                <option value="Puducherry">Puducherry</option>
+
             </select>
         </div>
     </div>
@@ -81,35 +117,36 @@
     <div class="footer">
         <div class="total-info">
             <span id="finalPriceDisplay" style="font-weight:bold; font-size:18px;">₹0</span> 
-            <br><small style="color: #2e7d32; font-weight: bold;"><i class="fa-solid fa-hand-holding-dollar"></i> Pay on Delivery Available</small>
+            <br>
+            <small style="color:#2e7d32; font-weight:bold;">
+                <i class="fa-solid fa-qrcode"></i> UPI QR Payment
+            </small>
         </div>
         <button onclick="confirmOrder()" class="final-btn">CONFIRM ORDER</button>
     </div>
 
     <script>
-        // --- 1. Price Sync Logic (Handles Buy Now vs Cart Total) ---
-        window.onload = function() {
-            let finalPrice = 0;
+        // --- 1. Price Sync Logic ---
+        let finalPrice = 0;
 
-            // Step A: Check if "Buy Now" was clicked (Single Product)
+        window.onload = function() {
+
             let buyNowProduct = JSON.parse(localStorage.getItem('buyNowItem'));
-            
-            // Step B: Check if Cart Total exists (Saved from Cart Page)
             let cartTotal = localStorage.getItem('cartTotal');
 
             if (buyNowProduct) {
-                // Agar Detail page se Buy Now dabaya hai
                 finalPrice = Number(buyNowProduct.price);
             } else if (cartTotal) {
-                // Agar Cart page se Checkout dabaya hai
                 finalPrice = Number(cartTotal);
             } else {
-                // Default Case: Calculate from cart if nothing else found
                 let cartProducts = JSON.parse(localStorage.getItem('myCart')) || [];
                 finalPrice = cartProducts.reduce((sum, p) => sum + Number(p.price), 0);
             }
 
             document.getElementById('finalPriceDisplay').innerText = "₹" + finalPrice;
+
+            // 🔥 IMPORTANT: Save price for QR page
+            localStorage.setItem("checkoutPrice", finalPrice);
         };
 
         // --- 2. Validation & Confirmation Logic ---
@@ -132,22 +169,18 @@
                 return;
             }
 
-            // Order Object tyyar karna
             const orderDetails = {
                 customerName: name,
                 customerPhone: phone,
                 address: `${house}, ${area}, ${city}, ${state} - ${pin}`,
-                totalAmount: document.getElementById('finalPriceDisplay').innerText,
-                paymentMethod: "Pay on Delivery",
+                totalAmount: finalPrice,
+                paymentMethod: "UPI QR Payment",
                 orderDate: new Date().toLocaleString()
             };
 
-            // Save order data for QR/Final page
             localStorage.setItem('lastOrderAddress', JSON.stringify(orderDetails));
 
-            // CLEANUP: Taaki agli shopping fresh ho
             localStorage.removeItem('buyNowItem');
-            // localStorage.removeItem('cartTotal'); // Isko qr.html par bhi remove kar sakte hain
 
             window.location.href = 'qr.html';
         }
