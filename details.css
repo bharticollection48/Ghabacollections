@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
 
 :root {
-    --primary: #9c27b0;
+    --primary: #f70994;
     --dark: #222;
     --light-gray: #f4f4f7;
     --text-muted: #666;
@@ -108,4 +108,4 @@ header {
     gap: 8px;
 }
 .btn-cart { background: var(--light-gray); color: var(--dark); border: 1px solid #ddd; }
-.btn-buy { background: var(--primary); color: #fff; box-shadow: 0 5px 15px rgba(156, 39, 176, 0.3); }
+.btn-buy { background: var(--primary); color: #fff; box-shadow: 0 5px 15px rgba(247, 2, 104, 0.3); }
