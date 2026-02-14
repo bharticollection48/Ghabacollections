@@ -1,6 +1,5 @@
 // --- 1. CONFIGURATION ---
-// Is URL ko tabhi badlein jab aap naya Deployment karein
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8hdjGjnymgMQTE4c0gMmI0VVCWoEubyLyeOuo2pfbegv1ISFU2O6acvWM75hThJX8/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJ8dKpNE8g_kgrYT1ZfJteIK9G4HYrx-Y9JGbuuyd1rSy5lYBfpPPw3_2rniyNrdAY/exec"; 
 
 let allProducts = [];
 let currentData = [];
@@ -9,17 +8,21 @@ let currentData = [];
  * Page load hote hi data mangwane ki koshish karein
  */
 window.onload = async () => {
-    // 1. Pehle LocalStorage wala turant dikhao (Speed ke liye)
+    // 1. Loader dikhao jab tak data load na ho
+    const grid = document.getElementById('productDisplay');
+    if (grid) grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:30px; color:#9c27b0;"></i><p>Loading Products...</p></div>';
+
+    // 2. Pehle LocalStorage se purana data dikhao (Instant feel ke liye)
     const localData = localStorage.getItem('myProducts');
     if (localData) {
         try {
             allProducts = JSON.parse(localData);
             currentData = [...allProducts];
             render(allProducts);
-        } catch(e) { console.log("Local storage error"); }
+        } catch(e) { console.log("Cache error"); }
     }
     
-    // 2. Phir Cloud se fresh data lao
+    // 3. Phir Cloud se ekdum taaza data lao
     await refreshData();
 };
 
@@ -28,41 +31,45 @@ window.onload = async () => {
  */
 async function refreshData() {
     try {
-        // Cache busting ke liye timestamp
+        // Cache busting: t=Date.now() browser ko naya data lane par majboor karta hai
         const fetchUrl = SCRIPT_URL + (SCRIPT_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
         
         const response = await fetch(fetchUrl);
-        if (!response.ok) throw new Error("Network response was not ok");
+        if (!response.ok) throw new Error("Server not responding");
         
-        const sheetData = await response.json();
+        const result = await response.json();
         
-        // --- DHAYAN DEIN: Yahan format change hua hai ---
-        // Agar sheetData mein .products hai (jo admin panel bhej raha hai)
         let freshProducts = [];
-        if (sheetData.products && Array.isArray(sheetData.products)) {
-            freshProducts = sheetData.products;
+
+        // Admin Panel format check: { products: [], settings: {} }
+        if (result.products && Array.isArray(result.products)) {
+            freshProducts = result.products;
             
-            // Settings ko bhi update kar dein (UPI wagera ke liye)
-            if(sheetData.settings) {
-                localStorage.setItem('ghabaUPI', sheetData.settings.upi);
-                localStorage.setItem('adminPassword', sheetData.settings.password);
+            // Sync UPI and Password to LocalStorage
+            if(result.settings) {
+                localStorage.setItem('ghabaUPI', result.settings.upi);
+                localStorage.setItem('adminPassword', result.settings.password);
             }
-        } else if (Array.isArray(sheetData)) {
-            // Agar purana format hai toh seedha array lo
-            freshProducts = sheetData;
+        } 
+        // Agar result sirf ek array hai
+        else if (Array.isArray(result)) {
+            freshProducts = result;
         }
 
         if (freshProducts.length > 0) {
             allProducts = freshProducts;
             currentData = [...allProducts];
             
-            // Naye data ko save karein
+            // Store in LocalStorage for next visit
             localStorage.setItem('myProducts', JSON.stringify(allProducts));
             render(allProducts); 
-            console.log("Cloud Data Synced! Total Items:", allProducts.length);
+            console.log("Cloud Sync Successful. Total:", allProducts.length);
+        } else {
+            // Agar sheet khali hai
+            render([]);
         }
     } catch (error) {
-        console.error("Sheet load error:", error);
+        console.error("Sync Error:", error);
     }
     updateCartBadge();
 }
@@ -78,23 +85,22 @@ function render(data) {
         grid.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 50px; color: #888;">
                 <i class="fa-solid fa-box-open" style="font-size: 40px; margin-bottom: 10px; color: #ccc;"></i>
-                <h3>Abhi koi product live nahi hai</h3>
-                <p>Naya collection jald hi aayega!</p>
+                <h3>Stock Update Ho Raha Hai</h3>
+                <p>Kripya thodi der mein check karein ya refresh karein.</p>
             </div>`;
         return;
     }
 
     grid.innerHTML = '';
     
-    // Naye products ko upar dikhane ke liye reverse
-    // slice() isliye taaki original array kharab na ho
+    // Naye products hamesha upar dikhane ke liye reverse()
     const displayData = [...data].reverse();
 
     displayData.forEach(p => {
         const currentPrice = parseFloat(p.price) || 0;
         const originalPrice = Math.round(currentPrice * 1.4);
         
-        // Image logic: sheet ke headers se matching
+        // Multiple fallback for images
         let imgPath = p.mainImg || p.img || (p.gallery && p.gallery[0]) || 'https://via.placeholder.com/300?text=No+Image';
 
         grid.innerHTML += `
@@ -114,7 +120,7 @@ function render(data) {
                     </div>
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px;">
                          <span class="rating-pill">4.2 <i class="fa-solid fa-star" style="font-size: 8px;"></i></span>
-                        <span style="font-size: 11px; color: #888;">Free Delivery</span>
+                        <span style="font-size: 11px; color: #00b894; font-weight:bold;">Free Delivery</span>
                     </div>
                 </div>
             </div>`;
@@ -133,7 +139,6 @@ function searchProduct() {
 }
 
 function filterProducts(categoryName) {
-    // URL se filter karne ke liye ya button se
     currentData = (categoryName === 'All') 
         ? [...allProducts] 
         : allProducts.filter(p => p.category === categoryName);
@@ -163,5 +168,5 @@ function addToWishlist(id) {
     alert("Wishlist mein add ho gaya! ❤️");
 }
 
-// Browser tab par wapas aate hi sync karein
+// Jab user doosre tab se wapas aaye toh data refresh karein
 window.onfocus = refreshData;
