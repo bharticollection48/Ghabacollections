@@ -9,14 +9,17 @@ let currentData = [];
  * Page load hote hi data mangwane ki koshish karein
  */
 window.onload = async () => {
-    // Pehle LocalStorage wala turant dikhao (user ko khali screen na dikhe)
+    // 1. Pehle LocalStorage wala turant dikhao (Speed ke liye)
     const localData = localStorage.getItem('myProducts');
     if (localData) {
-        allProducts = JSON.parse(localData);
-        currentData = [...allProducts];
-        render(allProducts);
+        try {
+            allProducts = JSON.parse(localData);
+            currentData = [...allProducts];
+            render(allProducts);
+        } catch(e) { console.log("Local storage error"); }
     }
-    // Phir Background mein Cloud se naya data lao
+    
+    // 2. Phir Cloud se fresh data lao
     await refreshData();
 };
 
@@ -25,22 +28,38 @@ window.onload = async () => {
  */
 async function refreshData() {
     try {
-        // Cache busting ke liye timestamp (taki purana data na dikhe)
+        // Cache busting ke liye timestamp
         const fetchUrl = SCRIPT_URL + (SCRIPT_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
         
         const response = await fetch(fetchUrl);
-        
         if (!response.ok) throw new Error("Network response was not ok");
         
         const sheetData = await response.json();
         
-        if (sheetData && sheetData.length > 0) {
-            allProducts = sheetData;
+        // --- DHAYAN DEIN: Yahan format change hua hai ---
+        // Agar sheetData mein .products hai (jo admin panel bhej raha hai)
+        let freshProducts = [];
+        if (sheetData.products && Array.isArray(sheetData.products)) {
+            freshProducts = sheetData.products;
+            
+            // Settings ko bhi update kar dein (UPI wagera ke liye)
+            if(sheetData.settings) {
+                localStorage.setItem('ghabaUPI', sheetData.settings.upi);
+                localStorage.setItem('adminPassword', sheetData.settings.password);
+            }
+        } else if (Array.isArray(sheetData)) {
+            // Agar purana format hai toh seedha array lo
+            freshProducts = sheetData;
+        }
+
+        if (freshProducts.length > 0) {
+            allProducts = freshProducts;
             currentData = [...allProducts];
-            // Naye phone ke liye save karein
+            
+            // Naye data ko save karein
             localStorage.setItem('myProducts', JSON.stringify(allProducts));
             render(allProducts); 
-            console.log("Cloud Data Synced!");
+            console.log("Cloud Data Synced! Total Items:", allProducts.length);
         }
     } catch (error) {
         console.error("Sheet load error:", error);
@@ -60,7 +79,7 @@ function render(data) {
             <div style="grid-column: 1/-1; text-align: center; padding: 50px; color: #888;">
                 <i class="fa-solid fa-box-open" style="font-size: 40px; margin-bottom: 10px; color: #ccc;"></i>
                 <h3>Abhi koi product live nahi hai</h3>
-                <p>Admin panel se sync hone ka intezar karein.</p>
+                <p>Naya collection jald hi aayega!</p>
             </div>`;
         return;
     }
@@ -68,19 +87,20 @@ function render(data) {
     grid.innerHTML = '';
     
     // Naye products ko upar dikhane ke liye reverse
+    // slice() isliye taaki original array kharab na ho
     const displayData = [...data].reverse();
 
     displayData.forEach(p => {
         const currentPrice = parseFloat(p.price) || 0;
         const originalPrice = Math.round(currentPrice * 1.4);
         
-        // Image logic: sheet ke header se matching
+        // Image logic: sheet ke headers se matching
         let imgPath = p.mainImg || p.img || (p.gallery && p.gallery[0]) || 'https://via.placeholder.com/300?text=No+Image';
 
         grid.innerHTML += `
             <div class="product-card" onclick="openProduct(${p.id})">
                 <div class="img-wrapper">
-                    <img src="${imgPath}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/300?text=Image+Error'">
+                    <img src="${imgPath}" alt="${p.name}" loading="lazy" onerror="this.src='https://via.placeholder.com/300?text=Image+Error'">
                     <div class="wishlist-icon" onclick="event.stopPropagation(); addToWishlist(${p.id})">
                         <i class="fa-regular fa-heart"></i>
                     </div>
@@ -106,13 +126,14 @@ function render(data) {
 function searchProduct() {
     const val = document.getElementById('searchInput').value.toLowerCase();
     const filtered = allProducts.filter(p => 
-        p.name.toLowerCase().includes(val) || 
+        (p.name && p.name.toLowerCase().includes(val)) || 
         (p.category && p.category.toLowerCase().includes(val))
     );
     render(filtered);
 }
 
 function filterProducts(categoryName) {
+    // URL se filter karne ke liye ya button se
     currentData = (categoryName === 'All') 
         ? [...allProducts] 
         : allProducts.filter(p => p.category === categoryName);
@@ -142,5 +163,5 @@ function addToWishlist(id) {
     alert("Wishlist mein add ho gaya! ❤️");
 }
 
-// Phone switch hone par refresh ke liye
+// Browser tab par wapas aate hi sync karein
 window.onfocus = refreshData;
