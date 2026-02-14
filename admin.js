@@ -1,31 +1,107 @@
 // --- 1. CONFIGURATION ---
-// Apni Google Sheet ka naya Deployment URL yahan paste karein
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbyyNOdayFKPMlXdKB5FXsOFPRpnVE8es9r9y4N0M1F_PumVp-fO1nq47nMLqiLMt1pe/exec";
+// DHAYAN DEIN: Google Script update karne ke baad naya URL yahan zaroor dalein
+const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbw8hdjGjnymgMQTE4c0gMmI0VVCWoEubyLyeOuo2pfbegv1ISFU2O6acvWM75hThJX8/exec";
 const IMGBB_API_KEY = "9e2c45e20b2a686c19d3c0cc9cf06f9b"; 
 
-// --- 2. Security Check (Login) ---
-window.onload = function() {
-    let pass = prompt("Enter Admin Password:");
-    if (pass === "admin123") {
+// --- 2. Server se Settings Fetch Karna (Auto-Sync) ---
+async function fetchServerSettings() {
+    try {
+        // Cache bypass karne ke liye timestamp add kiya hai taaki hamesha naya data mile
+        const response = await fetch(GOOGLE_SHEET_URL + "?t=" + Date.now());
+        const data = await response.json();
+        
+        if (data.settings) {
+            // Server wala data LocalStorage mein Force Update karna
+            localStorage.setItem('adminPassword', data.settings.password);
+            localStorage.setItem('ghabaUPI', data.settings.upi);
+            
+            // UI Update (Agar Elements page par hain toh)
+            if(document.getElementById('currentUPIText')) document.getElementById('currentUPIText').innerText = data.settings.upi;
+            if(document.getElementById('currentPassText')) document.getElementById('currentPassText').innerText = data.settings.password;
+            if(document.getElementById('adminUPI')) document.getElementById('adminUPI').value = data.settings.upi;
+        }
+        return data.products || [];
+    } catch (error) {
+        console.error("Server Fetch Error:", error);
+        return [];
+    }
+}
+
+// --- 3. Security Check on Load (Server First) ---
+window.onload = async function() {
+    // Page load hote hi pehle server se taaza settings mangwao
+    const serverProducts = await fetchServerSettings();
+    
+    // Ab wahi password use hoga jo Google Sheet par hai
+    const latestPass = localStorage.getItem('adminPassword') || "admin123";
+    let userEntry = prompt("Enter Admin Password:");
+    
+    if (userEntry === latestPass) {
         document.body.style.display = "block";
-        displayAdminProducts();
+        displayAdminProducts(serverProducts); 
     } else {
-        alert("Access Denied!");
+        alert("Access Denied! Galat Password.");
         window.location.href = "index.html";
     }
 };
 
-/**
- * --- 3. Smart Cloud Upload (ImgBB) ---
- * Is function ko HTML ke onchange="autoUrl(this, X)" se call kiya ja raha hai
- */
+// --- 4. Server Update Logic (Password & UPI Sync) ---
+async function syncSettingsToServer(newUpi, newPass) {
+    const data = {
+        type: "updateSettings",
+        upi: newUpi,
+        password: newPass
+    };
+
+    // UI par status dikhao
+    const passLabel = document.getElementById('currentPassText');
+    if(passLabel) passLabel.innerText = "Saving to Cloud...";
+
+    try {
+        await fetch(GOOGLE_SHEET_URL, {
+            method: 'POST',
+            mode: 'no-cors', 
+            body: JSON.stringify(data)
+        });
+
+        alert("Server updated! Ab sabhi devices par naya Password/UPI kaam karega. ✅");
+        
+        // Data update hone ke baad dobara fresh fetch karo
+        await fetchServerSettings();
+        location.reload(); 
+    } catch (error) {
+        alert("Server error! Settings save nahi hui.");
+    }
+}
+
+function updateUPI() {
+    const upi = document.getElementById('adminUPI').value.trim();
+    const currentPass = localStorage.getItem('adminPassword');
+    if(upi) {
+        syncSettingsToServer(upi, currentPass);
+    } else {
+        alert("Kripya UPI ID bhariye!");
+    }
+}
+
+function updatePass() {
+    const newPass = document.getElementById('adminPass').value.trim();
+    const currentUPI = localStorage.getItem('ghabaUPI');
+    if(newPass.length >= 4) {
+        syncSettingsToServer(currentUPI, newPass);
+    } else {
+        alert("Password kam se kam 4 characters ka hona chahiye!");
+    }
+}
+
+// --- 5. Photo Upload (ImgBB) ---
 async function autoUrl(input, slot) {
     const file = input.files[0];
     if (!file) return;
 
     const previewImg = document.getElementById(`pre${slot}`);
     const urlInput = document.getElementById(`url${slot}`);
-    const btnSpan = input.previousElementSibling; // Button text badalne ke liye
+    const btnSpan = input.previousElementSibling; 
 
     if (btnSpan) btnSpan.innerText = "Wait...";
     if (previewImg) previewImg.style.opacity = "0.3";
@@ -41,34 +117,26 @@ async function autoUrl(input, slot) {
         const data = await response.json();
 
         if (data.success) {
-            const onlineUrl = data.data.url;
-            urlInput.value = onlineUrl;
+            urlInput.value = data.data.url;
             if (previewImg) {
-                previewImg.src = onlineUrl;
+                previewImg.src = data.data.url;
                 previewImg.style.opacity = "1";
             }
             if (btnSpan) btnSpan.innerText = "Done ✅";
-        } else {
-            alert("Upload Fail! Check ImgBB Key.");
-            if (btnSpan) btnSpan.innerText = "Retry";
         }
     } catch (error) {
-        console.error("ImgBB Error:", error);
-        alert("Network Error! Photo upload nahi hui.");
+        alert("Photo upload fail!");
+        if (btnSpan) btnSpan.innerText = "Gallery";
     }
 }
 
-// --- 4. Save Product Logic ---
+// --- 6. Save Product ---
 async function saveProduct() {
-    console.log("Save function triggered!"); // Debugging ke liye
-
-    // HTML IDs se data lena
     const name = document.getElementById('pName').value.trim();
     const price = document.getElementById('pPrice').value.trim();
     const category = document.getElementById('pCategory').value;
     const video = document.getElementById('pVideo').value.trim();
 
-    // Gallery Array (url1 se url5 tak)
     const gallery = [
         document.getElementById('url1').value,
         document.getElementById('url2').value,
@@ -77,16 +145,12 @@ async function saveProduct() {
         document.getElementById('url5').value
     ].filter(url => url.trim() !== "");
 
-    // Validation
     if (!name || !price || gallery.length === 0) {
-        alert("Please fill Name, Price and at least 1 Image!");
+        alert("Kripya Name, Price aur kam se kam 1 Photo dalein!");
         return;
     }
 
     const submitBtn = document.querySelector('.btn-upload');
-    const originalText = submitBtn.innerText;
-    
-    // UI Loading State
     submitBtn.innerText = "PUBLISHING...";
     submitBtn.disabled = true;
 
@@ -96,81 +160,42 @@ async function saveProduct() {
         price: price,
         category: category,
         mainImg: gallery[0],
-        gallery: gallery, // Full array for slider
+        gallery: gallery, 
         video: video
     };
 
     try {
-        // 1. Google Sheet mein bhejiyo
         await fetch(GOOGLE_SHEET_URL, {
             method: 'POST',
             mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newProduct)
         });
 
-        // 2. Local Storage update (Taaki turant niche dikhe)
-        let products = JSON.parse(localStorage.getItem('myProducts')) || [];
-        products.push(newProduct);
-        localStorage.setItem('myProducts', JSON.stringify(products));
-
-        alert("Product Published Successfully! ✅");
-        
-        // Reset form and UI
-        resetAdminForm();
-        displayAdminProducts();
-
+        alert("Product Published to Cloud! ✅");
+        location.reload(); 
     } catch (error) {
-        console.error("Critical Error:", error);
-        alert("Could not sync with Cloud. Product saved locally only.");
+        alert("Server error! Product save nahi hua.");
     } finally {
-        submitBtn.innerText = originalText;
+        submitBtn.innerText = "PUBLISH PRODUCT";
         submitBtn.disabled = false;
     }
 }
 
-// --- 5. Supporting Functions ---
-
-function resetAdminForm() {
-    document.getElementById('pName').value = "";
-    document.getElementById('pPrice').value = "";
-    document.getElementById('pVideo').value = "";
-    for (let i = 1; i <= 5; i++) {
-        document.getElementById(`url${i}`).value = "";
-        const pre = document.getElementById(`pre${i}`);
-        if (pre) pre.src = "";
-    }
-    // Buttons text reset
-    const fileBtns = document.querySelectorAll('.btn-file');
-    fileBtns.forEach(btn => btn.innerText = "Gallery");
-}
-
-function displayAdminProducts() {
+// --- 7. UI Helpers ---
+function displayAdminProducts(products) {
     const list = document.getElementById('adminProductList');
-    if (!list) return;
+    if (!list || !products) return;
     
-    let products = JSON.parse(localStorage.getItem('myProducts')) || [];
-    
-    // Naya product pehle dikhane ke liye reverse()
     list.innerHTML = products.slice().reverse().map(p => `
         <div class="p-card">
-            <button class="delete-btn" onclick="deleteProduct(${p.id})">×</button>
-            <img src="${p.mainImg}" onerror="this.src='https://via.placeholder.com/150';">
-            <p style="font-size:12px; font-weight:bold; margin: 5px 0; color:#333;">${p.name}</p>
-            <p style="color:#ff4757; font-weight:bold; margin: 0;">₹${p.price}</p>
+            <img src="${p.mainImg}">
+            <p style="font-size:12px; font-weight:bold; margin:5px 0;">${p.name}</p>
+            <p style="color:#ff4757; font-weight:bold;">₹${p.price}</p>
         </div>
     `).join('');
 }
 
-function deleteProduct(id) {
-    if (confirm("Delete this product from view?")) {
-        let products = JSON.parse(localStorage.getItem('myProducts')) || [];
-        products = products.filter(p => p.id !== id);
-        localStorage.setItem('myProducts', JSON.stringify(products));
-        displayAdminProducts();
-    }
-}
-
 function logout() { 
+    localStorage.clear(); 
     window.location.href = "index.html"; 
 }

@@ -1,6 +1,6 @@
 // --- 1. CONFIGURATION ---
 // Is URL ko tabhi badlein jab aap naya Deployment karein
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyyNOdayFKPMlXdKB5FXsOFPRpnVE8es9r9y4N0M1F_PumVp-fO1nq47nMLqiLMt1pe/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8hdjGjnymgMQTE4c0gMmI0VVCWoEubyLyeOuo2pfbegv1ISFU2O6acvWM75hThJX8/exec"; 
 
 let allProducts = [];
 let currentData = [];
