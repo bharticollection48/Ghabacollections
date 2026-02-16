@@ -110,16 +110,22 @@ header {
 .btn-cart { background: var(--light-gray); color: var(--dark); border: 1px solid #ddd; }
 .btn-buy { background: var(--primary); color: #fff; box-shadow: 0 5px 15px rgba(247, 2, 104, 0.3); }
 
-/* Container */
+/* Container - Iska bottom badha diya hai taaki buttons ke upar na aaye */
 .wa-container {
     position: fixed;
-    bottom: 30px;
+    bottom: 100px; /* Desktop par thoda upar rakha hai */
     right: 30px;
     z-index: 9999;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     font-family: 'Segoe UI', Roboto, sans-serif;
+    pointer-events: none; /* Taaki piche ke buttons block na hon */
+}
+
+/* Clickable elements */
+.wa-message, .whatsapp-modern {
+    pointer-events: auto;
 }
 
 /* Chat Message Pop-up */
@@ -133,20 +139,20 @@ header {
     color: #333;
     font-weight: 500;
     border: 1px solid #eee;
-    animation: fadeInOut 4s infinite; /* Message chamkta rahega */
+    animation: fadeInOut 4s infinite;
 }
 
 /* The Button */
 .whatsapp-modern {
     background: linear-gradient(45deg, #25d366, #128c7e);
-    width: 65px;
-    height: 65px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 35px;
+    font-size: 32px;
     text-decoration: none;
     box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
     position: relative;
@@ -179,9 +185,19 @@ header {
     50% { opacity: 1; transform: translateY(-3px); }
 }
 
-/* Mobile responsive */
+/* Mobile Responsive - Yahan bottom ko 120px kiya hai */
 @media (max-width: 768px) {
-    .wa-container { bottom: 20px; right: 20px; }
-    .whatsapp-modern { width: 55px; height: 55px; font-size: 30px; }
-    .wa-message { font-size: 12px; padding: 6px 12px; }
+    .wa-container { 
+        bottom: 120px; /* Isse ye Buy Now button se kaafi upar rahega */
+        right: 20px; 
+    }
+    .whatsapp-modern { 
+        width: 55px; 
+        height: 55px; 
+        font-size: 30px; 
+    }
+    .wa-message { 
+        font-size: 11px; 
+        padding: 6px 12px; 
+    }
 }
