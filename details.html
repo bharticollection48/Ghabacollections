@@ -6,50 +6,21 @@
     <title>Ghaba - Quality Shopping</title>
     
     <link rel="icon" type="image/png" href="https://img.freepik.com/premium-vector/shopping-logo-vector-icon_636116-200.jpg?semt=ais_hybrid&w=740&q=80"> 
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="details.css">
     <style>
-        /* Size Section Styles */
         .size-selection-area { margin-top: 20px; display: none; }
         .size-label { font-weight: bold; margin-bottom: 10px; font-size: 14px; color: #333; }
         .size-options { display: flex; gap: 8px; flex-wrap: wrap; }
         .size-btn {
-            border: 1.5px solid #ddd;
-            background: white;
-            padding: 8px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-            min-width: 45px;
+            border: 1.5px solid #ddd; background: white; padding: 8px 14px;
+            border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; min-width: 45px;
         }
-        .size-btn.active {
-            border-color: #e40888;
-            background: #f3047c;
-            color: white;
-        }
-
-        /* Similar Products Section Styles */
-        .related-section { 
-            padding: 20px; 
-            border-top: 8px solid #f5f5f5; 
-            margin-top: 20px;
-            margin-bottom: 100px; 
-        }
+        .size-btn.active { border-color: #e40888; background: #f3047c; color: white; }
+        .related-section { padding: 20px; border-top: 8px solid #f5f5f5; margin-top: 20px; margin-bottom: 100px; }
         .related-title { font-size: 18px; font-weight: 800; color: #333; margin-bottom: 15px; }
-        .related-grid { 
-            display: grid; 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 12px; 
-        }
-        .rel-card { 
-            background: white; 
-            border-radius: 10px; 
-            overflow: hidden; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
-            cursor: pointer;
-        }
+        .related-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .rel-card { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; }
         .rel-card img { width: 100%; height: 150px; object-fit: cover; }
         .rel-info { padding: 8px; }
         .rel-name { font-size: 12px; color: #444; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -69,14 +40,14 @@
 
     <div class="gallery-section">
         <div class="main-img-box" id="mainBox">
-            <img id="mainDisplay" src="" alt="Product Image">
+            <img id="mainDisplay" src="https://via.placeholder.com/400?text=Loading..." alt="Product Image">
         </div>
         <div class="thumb-row" id="thumbRow"></div>
     </div>
 
     <div class="content-box">
         <span class="brand-label">Ghaba Exclusive</span>
-        <h1 class="p-name" id="pName">Product Name</h1>
+        <h1 class="p-name" id="pName">Loading...</h1>
         
         <div class="price-container">
             <span class="current-price" id="pPrice">₹0</span>
@@ -101,166 +72,171 @@
 
         <h4 style="margin-bottom: 10px;">Description</h4>
         <p id="pDesc" style="font-size: 14px; color: #666; line-height: 1.6;">
-            This Ghaba product is designed for those who value both style and comfort. Every detail is crafted with perfection to ensure a premium look for all occasions.
+            This Ghaba product is designed for style and comfort. Every detail is crafted with perfection to ensure a premium look.
         </p>
     </div>
 
-    <div class="related-section">
+    <div class="related-section" id="relatedSection">
         <div class="related-title">Similar Products</div>
         <div id="relatedGrid" class="related-grid"></div>
     </div>
 
     <div class="bottom-bar">
-        <button class="btn btn-cart" id="addToCartBtn">
-            <i class="fa-solid fa-cart-plus"></i> ADD TO CART
-        </button>
-        <button class="btn btn-buy" id="buyNowBtn">
-            <i class="fa-solid fa-bolt"></i> BUY NOW
-        </button>
+        <button class="btn btn-cart" id="addToCartBtn"><i class="fa-solid fa-cart-plus"></i> ADD TO CART</button>
+        <button class="btn btn-buy" id="buyNowBtn"><i class="fa-solid fa-bolt"></i> BUY NOW</button>
     </div>
 
     <script>
+        // --- 1. GLOBAL VARIABLES ---
         const params = new URLSearchParams(window.location.search);
-        const id = params.get('id');
-        
-        // --- DATA FIX LOGIC FOR SHARING ---
-        const allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
-        let product = allProducts.find(x => x.id == id);
+        const productId = params.get('id');
+        let currentProduct = null;
+        window.selectedSize = "";
 
-        // Agar LocalStorage me nahi mila (Shared Link Case), toh URL se data lo
-        if (!product && id) {
-            product = {
-                id: id,
-                name: params.get('name') || "Premium Product",
-                price: params.get('price') || "0",
-                mainImg: params.get('img') || "",
-                category: params.get('cat') || "General",
-                gallery: params.get('img') ? [params.get('img')] : []
-            };
+        // --- 2. DATA LOADING ENGINE ---
+        function loadProduct() {
+            const allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
+            
+            // Link se data nikaalne ki koshish (Sharing Support)
+            const urlName = params.get('name');
+            const urlImg = params.get('img');
+            const urlPrice = params.get('price');
+            const urlCat = params.get('cat');
+
+            if (urlName && urlImg) {
+                // Shared Link Case: Is product ko use karein
+                currentProduct = {
+                    id: productId || Date.now(),
+                    name: decodeURIComponent(urlName),
+                    price: urlPrice || "0",
+                    mainImg: decodeURIComponent(urlImg),
+                    category: decodeURIComponent(urlCat || "Fashion"),
+                    gallery: [decodeURIComponent(urlImg)]
+                };
+            } else {
+                // Normal Case: LocalStorage se dhundho
+                currentProduct = allProducts.find(x => x.id == productId);
+            }
+
+            if (currentProduct) {
+                renderUI(currentProduct, allProducts);
+            } else {
+                document.body.innerHTML = "<div style='text-align:center; padding:50px;'><h3>Product Not Found!</h3><button onclick='history.back()'>Go Back</button></div>";
+            }
         }
 
-        let selectedSize = "";
-
-        if (product) {
+        // --- 3. UI RENDERING ---
+        function renderUI(product, allProducts) {
             document.getElementById('pName').innerText = product.name;
             document.getElementById('pPrice').innerText = '₹' + product.price;
             document.getElementById('pOld').innerText = '₹' + Math.round(product.price * 1.4);
-            document.getElementById('pCat').innerText = product.category || "General";
+            document.getElementById('pCat').innerText = product.category;
 
-            // --- Size Logic ---
+            const mainDisplay = document.getElementById('mainDisplay');
+            mainDisplay.src = product.mainImg || product.img;
+
+            // Size Selection Logic
             const sizeArea = document.getElementById('sizeArea');
             const sizeOptions = document.getElementById('sizeOptions');
-            const category = product.category;
-
+            const cat = product.category.toUpperCase();
             let sizes = [];
-            if (category === "Footwear") {
-                sizes = ["6", "7", "8", "9", "10"];
-                sizeArea.style.display = "block";
-            } else if (["Combo Offers", "Western Wear", "Kurtis & Dress", "KURTIS", "SAREE"].includes(category?.toUpperCase())) {
+
+            if (cat.includes("FOOTWEAR")) sizes = ["6", "7", "8", "9", "10"];
+            else if (["COMBO", "WESTERN", "KURTI", "SAREE", "DRESS"].some(el => cat.includes(el))) {
                 sizes = ["S", "M", "L", "XL", "XXL"];
-                sizeArea.style.display = "block";
             }
 
-            sizes.forEach(sz => {
-                const btn = document.createElement('button');
-                btn.className = 'size-btn';
-                btn.innerText = sz;
-                btn.onclick = () => {
-                    document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    selectedSize = sz;
-                };
-                sizeOptions.appendChild(btn);
-            });
+            if (sizes.length > 0) {
+                sizeArea.style.display = "block";
+                sizeOptions.innerHTML = ""; // Clear existing
+                sizes.forEach(sz => {
+                    const btn = document.createElement('button');
+                    btn.className = 'size-btn';
+                    btn.innerText = sz;
+                    btn.onclick = () => {
+                        document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        window.selectedSize = sz;
+                    };
+                    sizeOptions.appendChild(btn);
+                });
+            }
 
-            // Media Rendering
-            const mainDisplay = document.getElementById('mainDisplay');
-            const mainBox = document.getElementById('mainBox');
+            // Gallery Rendering
             const thumbRow = document.getElementById('thumbRow');
+            thumbRow.innerHTML = ""; // Clear existing
+            let imgs = product.gallery && product.gallery.length > 0 ? product.gallery : [product.mainImg || product.img];
             
-            const currentImg = product.mainImg || product.img;
-            mainDisplay.src = currentImg;
-            
-            let photos = product.gallery?.length ? product.gallery : [currentImg];
-
-            photos.forEach((src, i) => {
-                if(!src) return;
-                const thumb = document.createElement('div');
-                thumb.className = `thumb-card ${i === 0 ? 'active' : ''}`;
-                thumb.innerHTML = `<img src="${src}">`;
-                thumb.onclick = () => {
-                    mainBox.innerHTML = `<img src="${src}">`;
+            imgs.forEach((src, i) => {
+                const div = document.createElement('div');
+                div.className = `thumb-card ${i===0?'active':''}`;
+                div.innerHTML = `<img src="${src}">`;
+                div.onclick = () => {
+                    mainDisplay.src = src;
                     document.querySelectorAll('.thumb-card').forEach(t => t.classList.remove('active'));
-                    thumb.classList.add('active');
+                    div.classList.add('active');
                 };
-                thumbRow.appendChild(thumb);
+                thumbRow.appendChild(div);
             });
 
-            // --- Similar Products Logic ---
-            const relatedGrid = document.getElementById('relatedGrid');
-            const similarProducts = allProducts.filter(p => p.category === product.category && p.id != id);
-
-            if (similarProducts.length > 0) {
-                similarProducts.forEach(sp => {
-                    const relCard = document.createElement('div');
-                    relCard.className = 'rel-card';
-                    // Jab similar product par click ho, URL me details pass karein taaki sharing kaam kare
-                    const spUrl = `details.html?id=${sp.id}&name=${encodeURIComponent(sp.name)}&price=${sp.price}&img=${encodeURIComponent(sp.mainImg || sp.img)}&cat=${encodeURIComponent(sp.category)}`;
-                    relCard.onclick = () => window.location.href = spUrl;
-                    relCard.innerHTML = `
-                        <img src="${sp.mainImg || sp.img}">
-                        <div class="rel-info">
-                            <div class="rel-name">${sp.name}</div>
-                            <div class="rel-price">₹${sp.price}</div>
-                        </div>
-                    `;
-                    relatedGrid.appendChild(relCard);
+            // Related Products
+            const similar = allProducts.filter(p => p.category === product.category && p.id != product.id);
+            const grid = document.getElementById('relatedGrid');
+            grid.innerHTML = ""; // Clear existing
+            
+            if (similar.length > 0) {
+                similar.slice(0, 4).forEach(sp => {
+                    const card = document.createElement('div');
+                    card.className = 'rel-card';
+                    card.onclick = () => {
+                        const link = `details.html?id=${sp.id}&name=${encodeURIComponent(sp.name)}&price=${sp.price}&img=${encodeURIComponent(sp.mainImg || sp.img)}&cat=${encodeURIComponent(sp.category)}`;
+                        window.location.href = link;
+                    };
+                    card.innerHTML = `<img src="${sp.mainImg || sp.img}"><div class="rel-info"><div class="rel-name">${sp.name}</div><div class="rel-price">₹${sp.price}</div></div>`;
+                    grid.appendChild(card);
                 });
             } else {
-                document.querySelector('.related-section').style.display = 'none';
+                document.getElementById('relatedSection').style.display = 'none';
             }
-
-            // Buttons Logic
-            document.getElementById('addToCartBtn').onclick = () => {
-                if (sizeArea.style.display === "block" && !selectedSize) {
-                    alert("Kripya Size select karein! 📏");
-                    return;
-                }
-                let cart = JSON.parse(localStorage.getItem('myCart')) || [];
-                cart.push({...product, size: selectedSize});
-                localStorage.setItem('myCart', JSON.stringify(cart));
-                window.location.href = 'cart.html';
-            };
-
-            document.getElementById('buyNowBtn').onclick = () => {
-                if (sizeArea.style.display === "block" && !selectedSize) {
-                    alert("Kripya Size select karein! 📏");
-                    return;
-                }
-                localStorage.setItem('buyNowItem', JSON.stringify({...product, size: selectedSize}));
-                window.location.href = 'address.html'; 
-            };
         }
 
-        function updateCartBadge() {
+        // --- 4. ACTION BUTTONS ---
+        document.getElementById('addToCartBtn').onclick = () => {
+            if (document.getElementById('sizeArea').style.display === "block" && !window.selectedSize) {
+                alert("Please select a size! 📏"); return;
+            }
+            if (!currentProduct) return;
+
+            let cart = JSON.parse(localStorage.getItem('myCart')) || [];
+            cart.push({...currentProduct, size: window.selectedSize});
+            localStorage.setItem('myCart', JSON.stringify(cart));
+            window.location.href = 'cart.html';
+        };
+
+        document.getElementById('buyNowBtn').onclick = () => {
+            if (document.getElementById('sizeArea').style.display === "block" && !window.selectedSize) {
+                alert("Please select a size! 📏"); return;
+            }
+            if (!currentProduct) return;
+
+            localStorage.setItem('buyNowItem', JSON.stringify({...currentProduct, size: window.selectedSize}));
+            window.location.href = 'address.html';
+        };
+
+        function updateBadge() {
             const cart = JSON.parse(localStorage.getItem('myCart')) || [];
+            const badge = document.getElementById('badge');
             if(cart.length > 0) {
-                const badge = document.getElementById('badge');
                 badge.innerText = cart.length;
                 badge.style.display = 'block';
             }
         }
-        window.onload = updateCartBadge;
-    </script>
 
-    <div class="wa-container">
-        <div class="wa-message">Hi! Need help? 👋</div>
-        <a href="https://wa.me/7427061744?text=Hello! Hi ! Need help ." 
-        class="whatsapp-modern" 
-        target="_blank">
-            <i class="fa-brands fa-whatsapp"></i>
-            <span class="wa-pulse"></span>
-        </a>
-    </div>
+        // Initialize
+        window.onload = () => {
+            loadProduct();
+            updateBadge();
+        };
+    </script>
 </body>
 </html>
