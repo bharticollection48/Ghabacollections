@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="details.css">
     <style>
-        /* Loading Overlay */
         #pageLoader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: white; display: flex; flex-direction: column;
@@ -23,14 +22,27 @@
             border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; min-width: 45px;
         }
         .size-btn.active { border-color: #e40888; background: #f3047c; color: white; }
-        .related-section { padding: 20px; border-top: 8px solid #f5f5f5; margin-top: 20px; margin-bottom: 100px; }
-        .related-title { font-size: 18px; font-weight: 800; color: #333; margin-bottom: 15px; }
+        
+        /* Sections Styling */
+        .related-section, .more-section { padding: 20px; border-top: 8px solid #f5f5f5; }
+        .more-section { margin-bottom: 100px; } 
+        .section-title { font-size: 18px; font-weight: 800; color: #333; margin-bottom: 15px; }
+        
+        /* Similar Grid (Top) */
         .related-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         .rel-card { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; }
         .rel-card img { width: 100%; height: 150px; object-fit: cover; }
         .rel-info { padding: 8px; }
         .rel-name { font-size: 12px; color: #444; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .rel-price { font-weight: 700; color: #ee0b8f; font-size: 14px; margin-top: 4px; }
+
+        /* More Products Scroll (Bottom) */
+        .more-scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+        .more-scroll::-webkit-scrollbar { display: none; }
+        .more-item { flex: 0 0 130px; cursor: pointer; }
+        .more-img-box { width: 130px; height: 130px; border-radius: 12px; overflow: hidden; margin-bottom: 6px; border: 1px solid #eee; }
+        .more-img-box img { width: 100%; height: 100%; object-fit: cover; }
+        .more-item span { font-size: 11px; font-weight: 700; color: #ee0b8f; }
     </style>
 </head>
 <body>
@@ -41,8 +53,8 @@
     </div>
 
     <header>
-        <i class="fa-solid fa-chevron-left" onclick="history.back()"></i>
-        <h3 style="font-weight: 800; color: #f10d6c;">GHABA</h3>
+        <i class="fa-solid fa-chevron-left" onclick="window.location.href='index.html'" style="cursor: pointer;"></i>
+        <h3 style="font-weight: 800; color: #f10d6c; cursor: pointer;" onclick="window.location.href='index.html'">GHABA</h3>
         <div onclick="window.location.href='cart.html'" style="position: relative; cursor: pointer;">
             <i class="fa-solid fa-bag-shopping" style="font-size: 22px;"></i>
             <span id="badge" style="position: absolute; top:-5px; right:-8px; background:#f3067c; color:white; border-radius:50%; padding:2px 6px; font-size:10px; display:none;">0</span>
@@ -50,46 +62,40 @@
     </header>
 
     <div class="gallery-section">
-        <div class="main-img-box" id="mainBox">
-            <img id="mainDisplay" src="" alt="Product Image">
-        </div>
+        <div class="main-img-box" id="mainBox"><img id="mainDisplay" src="" alt="Product Image"></div>
         <div class="thumb-row" id="thumbRow"></div>
     </div>
 
     <div class="content-box">
         <span class="brand-label">Ghaba Exclusive</span>
         <h1 class="p-name" id="pName"></h1>
-        
         <div class="price-container">
             <span class="current-price" id="pPrice"></span>
             <span class="old-price" id="pOld"></span>
             <span class="off-tag">30% OFF</span>
         </div>
-
         <div id="sizeArea" class="size-selection-area">
             <div class="size-label">Select Size:</div>
             <div id="sizeOptions" class="size-options"></div>
         </div>
-
         <div style="background: #fdf2ff; padding: 15px; border-radius: 12px; margin: 20px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #e4073e;">Product Specifications</h4>
+            <h4 style="margin: 0 0 10px 0; color: #e4073e;">Specifications</h4>
             <table class="detail-table">
                 <tr><td class="td-label">Category</td><td class="td-value" id="pCat"></td></tr>
                 <tr><td class="td-label">Material</td><td class="td-value">Premium Quality</td></tr>
-                <tr><td class="td-label">Return Policy</td><td class="td-value">7 Days Easy Return</td></tr>
-                <tr><td class="td-label">Delivery</td><td class="td-value">Free Delivery</td></tr>
+                <tr><td class="td-label">Return</td><td class="td-value">7 Days Easy Return</td></tr>
             </table>
         </div>
-
-        <h4 style="margin-bottom: 10px;">Description</h4>
-        <p id="pDesc" style="font-size: 14px; color: #666; line-height: 1.6;">
-            This Ghaba product is designed for style and comfort. Every detail is crafted with perfection.
-        </p>
     </div>
 
     <div class="related-section" id="relatedSection">
-        <div class="related-title">Similar Products</div>
+        <div class="section-title">Similar Products</div>
         <div id="relatedGrid" class="related-grid"></div>
+    </div>
+
+    <div class="more-section" id="moreSection">
+        <div class="section-title" id="moreTitle">More Products</div>
+        <div id="moreScroll" class="more-scroll"></div>
     </div>
 
     <div class="bottom-bar">
@@ -104,39 +110,25 @@
         let currentProduct = null;
 
         async function init() {
-            // 1. Pehle LocalStorage dekho
             const allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
             currentProduct = allProducts.find(x => x.id == productId);
 
-            // 2. Agar nahi mila, toh URL se dekho
-            if (!currentProduct && params.get('name')) {
-                currentProduct = {
-                    id: productId,
-                    name: decodeURIComponent(params.get('name')),
-                    price: params.get('price'),
-                    mainImg: decodeURIComponent(params.get('img')),
-                    category: decodeURIComponent(params.get('cat') || "Fashion"),
-                    gallery: [decodeURIComponent(params.get('img'))]
-                };
-            }
-
-            // 3. Agar abhi bhi nahi mila, toh Cloud se fetch karo
             if (!currentProduct && productId) {
                 try {
                     const resp = await fetch(SCRIPT_URL);
                     const data = await resp.json();
                     const cloudProducts = data.products || data;
                     currentProduct = cloudProducts.find(x => x.id == productId);
-                    // Sync for future
                     localStorage.setItem('myProducts', JSON.stringify(cloudProducts));
-                } catch (e) { console.error("Cloud fetch failed", e); }
+                } catch (e) { console.error(e); }
             }
 
             if (currentProduct) {
                 renderUI(currentProduct, allProducts);
+                renderMoreFromCategory(currentProduct, allProducts);
                 document.getElementById('pageLoader').style.display = 'none';
             } else {
-                document.body.innerHTML = "<div style='text-align:center; padding:50px;'><h3>Product Not Found!</h3><p>Please go back to Home.</p><button onclick='window.location.href=\"index.html\"'>Go Home</button></div>";
+                window.location.href = 'index.html';
             }
         }
 
@@ -147,11 +139,10 @@
             document.getElementById('pCat').innerText = product.category;
             document.getElementById('mainDisplay').src = product.mainImg || product.img;
 
-            // Sizes
-            const cat = product.category.toUpperCase();
+            const cat = (product.category || "").toUpperCase();
             let sizes = [];
             if (cat.includes("FOOTWEAR")) sizes = ["6", "7", "8", "9", "10"];
-            else if (["COMBO", "WESTERN", "KURTI", "SAREE", "DRESS"].some(el => cat.includes(el))) sizes = ["S", "M", "L", "XL", "XXL"];
+            else if (["COMBO", "WESTERN", "KURTI", "SAREE", "DRESS", "FASHION"].some(el => cat.includes(el))) sizes = ["S", "M", "L", "XL", "XXL"];
 
             if (sizes.length > 0) {
                 document.getElementById('sizeArea').style.display = "block";
@@ -170,7 +161,7 @@
                 });
             }
 
-            // Gallery
+            // Main Gallery
             const thumbRow = document.getElementById('thumbRow');
             thumbRow.innerHTML = "";
             let imgs = product.gallery && product.gallery.length > 0 ? product.gallery : [product.mainImg || product.img];
@@ -186,10 +177,9 @@
                 thumbRow.appendChild(div);
             });
 
-            // Similar
-            const similar = allProducts.filter(p => p.category === product.category && p.id != product.id);
+            // Section 1: Similar Grid (First 4 items)
             const grid = document.getElementById('relatedGrid');
-            grid.innerHTML = "";
+            const similar = allProducts.filter(p => p.category === product.category && p.id != product.id);
             if (similar.length > 0) {
                 similar.slice(0, 4).forEach(sp => {
                     const card = document.createElement('div');
@@ -200,6 +190,31 @@
                 });
             } else {
                 document.getElementById('relatedSection').style.display = 'none';
+            }
+        }
+
+        // Section 2: More Products Scroll (Rest of the items in same category)
+        function renderMoreFromCategory(product, allProducts) {
+            const moreScroll = document.getElementById('moreScroll');
+            const moreTitle = document.getElementById('moreTitle');
+            const list = allProducts.filter(p => p.category === product.category && p.id != product.id);
+            
+            if (list.length > 4) {
+                moreTitle.innerText = "More in " + product.category;
+                list.slice(4).forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'more-item';
+                    div.onclick = () => window.location.href = `details.html?id=${item.id}&name=${encodeURIComponent(item.name)}&price=${item.price}&img=${encodeURIComponent(item.mainImg || item.img)}&cat=${encodeURIComponent(item.category)}`;
+                    div.innerHTML = `
+                        <div class="more-img-box">
+                            <img src="${item.mainImg || item.img}">
+                        </div>
+                        <span>₹${item.price}</span>
+                    `;
+                    moreScroll.appendChild(div);
+                });
+            } else {
+                document.getElementById('moreSection').style.display = 'none';
             }
         }
 
