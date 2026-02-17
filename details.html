@@ -40,14 +40,14 @@
 
     <div class="gallery-section">
         <div class="main-img-box" id="mainBox">
-            <img id="mainDisplay" src="https://via.placeholder.com/400?text=Loading..." alt="Product Image">
+            <img id="mainDisplay" src="" alt="Product Image">
         </div>
         <div class="thumb-row" id="thumbRow"></div>
     </div>
 
     <div class="content-box">
         <span class="brand-label">Ghaba Exclusive</span>
-        <h1 class="p-name" id="pName">Loading...</h1>
+        <h1 class="p-name" id="pName">Product Loading...</h1>
         
         <div class="price-container">
             <span class="current-price" id="pPrice">₹0</span>
@@ -72,7 +72,7 @@
 
         <h4 style="margin-bottom: 10px;">Description</h4>
         <p id="pDesc" style="font-size: 14px; color: #666; line-height: 1.6;">
-            This Ghaba product is designed for style and comfort. Every detail is crafted with perfection to ensure a premium look.
+            This Ghaba product is designed for those who value both style and comfort. Every detail is crafted with perfection to ensure a premium look for all occasions.
         </p>
     </div>
 
@@ -82,73 +82,69 @@
     </div>
 
     <div class="bottom-bar">
-        <button class="btn btn-cart" id="addToCartBtn"><i class="fa-solid fa-cart-plus"></i> ADD TO CART</button>
-        <button class="btn btn-buy" id="buyNowBtn"><i class="fa-solid fa-bolt"></i> BUY NOW</button>
+        <button class="btn btn-cart" id="addToCartBtn">
+            <i class="fa-solid fa-cart-plus"></i> ADD TO CART
+        </button>
+        <button class="btn btn-buy" id="buyNowBtn">
+            <i class="fa-solid fa-bolt"></i> BUY NOW
+        </button>
     </div>
 
     <script>
-        // --- 1. GLOBAL VARIABLES ---
+        // 1. Params nikaalein
         const params = new URLSearchParams(window.location.search);
-        const productId = params.get('id');
-        let currentProduct = null;
-        window.selectedSize = "";
+        const pid = params.get('id');
+        
+        // 2. Data source check karein
+        const allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
+        let product = allProducts.find(x => x.id == pid);
 
-        // --- 2. DATA LOADING ENGINE ---
-        function loadProduct() {
-            const allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
-            
-            // Link se data nikaalne ki koshish (Sharing Support)
+        // Fallback: Agar localStorage mein nahi mila toh URL se uthao
+        if (!product) {
             const urlName = params.get('name');
             const urlImg = params.get('img');
             const urlPrice = params.get('price');
-            const urlCat = params.get('cat');
-
+            
             if (urlName && urlImg) {
-                // Shared Link Case: Is product ko use karein
-                currentProduct = {
-                    id: productId || Date.now(),
+                product = {
+                    id: pid || Date.now(),
                     name: decodeURIComponent(urlName),
                     price: urlPrice || "0",
                     mainImg: decodeURIComponent(urlImg),
-                    category: decodeURIComponent(urlCat || "Fashion"),
+                    category: decodeURIComponent(params.get('cat') || "General"),
                     gallery: [decodeURIComponent(urlImg)]
                 };
-            } else {
-                // Normal Case: LocalStorage se dhundho
-                currentProduct = allProducts.find(x => x.id == productId);
-            }
-
-            if (currentProduct) {
-                renderUI(currentProduct, allProducts);
-            } else {
-                document.body.innerHTML = "<div style='text-align:center; padding:50px;'><h3>Product Not Found!</h3><button onclick='history.back()'>Go Back</button></div>";
             }
         }
 
-        // --- 3. UI RENDERING ---
-        function renderUI(product, allProducts) {
+        // Global variable taaki buttons ko data mile
+        window.currentProduct = product;
+        window.selectedSize = "";
+
+        if (product) {
+            // Fill UI
             document.getElementById('pName').innerText = product.name;
             document.getElementById('pPrice').innerText = '₹' + product.price;
             document.getElementById('pOld').innerText = '₹' + Math.round(product.price * 1.4);
-            document.getElementById('pCat').innerText = product.category;
-
+            document.getElementById('pCat').innerText = product.category || "General";
+            
             const mainDisplay = document.getElementById('mainDisplay');
             mainDisplay.src = product.mainImg || product.img;
 
-            // Size Selection Logic
+            // Size Logic
             const sizeArea = document.getElementById('sizeArea');
             const sizeOptions = document.getElementById('sizeOptions');
-            const cat = product.category.toUpperCase();
+            const cat = (product.category || "").toUpperCase();
             let sizes = [];
 
-            if (cat.includes("FOOTWEAR")) sizes = ["6", "7", "8", "9", "10"];
-            else if (["COMBO", "WESTERN", "KURTI", "SAREE", "DRESS"].some(el => cat.includes(el))) {
+            if (cat.includes("FOOTWEAR")) {
+                sizes = ["6", "7", "8", "9", "10"];
+            } else if (["COMBO", "WESTERN", "KURTI", "SAREE", "DRESS", "FASHION"].some(s => cat.includes(s))) {
                 sizes = ["S", "M", "L", "XL", "XXL"];
             }
 
             if (sizes.length > 0) {
                 sizeArea.style.display = "block";
-                sizeOptions.innerHTML = ""; // Clear existing
                 sizes.forEach(sz => {
                     const btn = document.createElement('button');
                     btn.className = 'size-btn';
@@ -162,81 +158,70 @@
                 });
             }
 
-            // Gallery Rendering
+            // Gallery logic
             const thumbRow = document.getElementById('thumbRow');
-            thumbRow.innerHTML = ""; // Clear existing
-            let imgs = product.gallery && product.gallery.length > 0 ? product.gallery : [product.mainImg || product.img];
-            
-            imgs.forEach((src, i) => {
-                const div = document.createElement('div');
-                div.className = `thumb-card ${i===0?'active':''}`;
-                div.innerHTML = `<img src="${src}">`;
-                div.onclick = () => {
+            let photos = product.gallery && product.gallery.length ? product.gallery : [product.mainImg || product.img];
+            photos.forEach((src, i) => {
+                const t = document.createElement('div');
+                t.className = `thumb-card ${i===0?'active':''}`;
+                t.innerHTML = `<img src="${src}">`;
+                t.onclick = () => {
                     mainDisplay.src = src;
-                    document.querySelectorAll('.thumb-card').forEach(t => t.classList.remove('active'));
-                    div.classList.add('active');
+                    document.querySelectorAll('.thumb-card').forEach(tc => tc.classList.remove('active'));
+                    t.classList.add('active');
                 };
-                thumbRow.appendChild(div);
+                thumbRow.appendChild(t);
             });
 
-            // Related Products
-            const similar = allProducts.filter(p => p.category === product.category && p.id != product.id);
-            const grid = document.getElementById('relatedGrid');
-            grid.innerHTML = ""; // Clear existing
-            
-            if (similar.length > 0) {
-                similar.slice(0, 4).forEach(sp => {
+            // Similar items
+            const similar = allProducts.filter(p => p.category === product.category && p.id != pid);
+            if(similar.length > 0) {
+                similar.slice(0, 4).forEach(s => {
                     const card = document.createElement('div');
                     card.className = 'rel-card';
                     card.onclick = () => {
-                        const link = `details.html?id=${sp.id}&name=${encodeURIComponent(sp.name)}&price=${sp.price}&img=${encodeURIComponent(sp.mainImg || sp.img)}&cat=${encodeURIComponent(sp.category)}`;
+                        const link = `details.html?id=${s.id}&name=${encodeURIComponent(s.name)}&price=${s.price}&img=${encodeURIComponent(s.mainImg || s.img)}&cat=${encodeURIComponent(s.category)}`;
                         window.location.href = link;
                     };
-                    card.innerHTML = `<img src="${sp.mainImg || sp.img}"><div class="rel-info"><div class="rel-name">${sp.name}</div><div class="rel-price">₹${sp.price}</div></div>`;
-                    grid.appendChild(card);
+                    card.innerHTML = `<img src="${s.mainImg || s.img}"><div class="rel-info"><div class="rel-name">${s.name}</div><div class="rel-price">₹${s.price}</div></div>`;
+                    document.getElementById('relatedGrid').appendChild(card);
                 });
             } else {
                 document.getElementById('relatedSection').style.display = 'none';
             }
+
+        } else {
+            // Agar bilkul kuch nahi mila toh error message dikhao instead of blank
+            document.querySelector('.content-box').innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Product Not Found!</h2><p style='text-align:center;'>Please try refreshing or going back to home.</p>";
         }
 
-        // --- 4. ACTION BUTTONS ---
+        // Button Functions
         document.getElementById('addToCartBtn').onclick = () => {
-            if (document.getElementById('sizeArea').style.display === "block" && !window.selectedSize) {
+            if(!window.currentProduct) return;
+            if(document.getElementById('sizeArea').style.display === "block" && !window.selectedSize) {
                 alert("Please select a size! 📏"); return;
             }
-            if (!currentProduct) return;
-
             let cart = JSON.parse(localStorage.getItem('myCart')) || [];
-            cart.push({...currentProduct, size: window.selectedSize});
+            cart.push({...window.currentProduct, size: window.selectedSize});
             localStorage.setItem('myCart', JSON.stringify(cart));
             window.location.href = 'cart.html';
         };
 
         document.getElementById('buyNowBtn').onclick = () => {
-            if (document.getElementById('sizeArea').style.display === "block" && !window.selectedSize) {
+            if(!window.currentProduct) return;
+            if(document.getElementById('sizeArea').style.display === "block" && !window.selectedSize) {
                 alert("Please select a size! 📏"); return;
             }
-            if (!currentProduct) return;
-
-            localStorage.setItem('buyNowItem', JSON.stringify({...currentProduct, size: window.selectedSize}));
+            localStorage.setItem('buyNowItem', JSON.stringify({...window.currentProduct, size: window.selectedSize}));
             window.location.href = 'address.html';
         };
 
-        function updateBadge() {
-            const cart = JSON.parse(localStorage.getItem('myCart')) || [];
-            const badge = document.getElementById('badge');
-            if(cart.length > 0) {
-                badge.innerText = cart.length;
-                badge.style.display = 'block';
-            }
+        // Cart Badge
+        const cart = JSON.parse(localStorage.getItem('myCart')) || [];
+        if(cart.length > 0) {
+            document.getElementById('badge').innerText = cart.length;
+            document.getElementById('badge').style.display = 'block';
         }
-
-        // Initialize
-        window.onload = () => {
-            loadProduct();
-            updateBadge();
-        };
     </script>
 </body>
 </html>
