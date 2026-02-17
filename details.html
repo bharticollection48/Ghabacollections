@@ -45,7 +45,7 @@
             display: flex;
             flex-direction: column;
         }
-        .prod-card img { width: 100%; height: 160px; object-fit: cover; }
+        .prod-card img { width: 100%; height: 175px; object-fit: cover; }
         .prod-info { padding: 10px; flex-grow: 1; }
         .prod-name { font-size: 12px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
         .prod-price { font-weight: 800; color: #333; font-size: 14px; margin-top: 4px; }
@@ -95,12 +95,12 @@
     </div>
 
     <div class="related-section" id="relatedSection">
-        <div class="section-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Matching Products</div>
+        <div class="section-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Matching Color & Style</div>
         <div id="relatedGrid" class="product-grid"></div>
     </div>
 
     <div class="more-products-section" id="moreSection">
-        <div class="section-title" id="moreTitle"><i class="fa-solid fa-layer-group"></i> More in this Category</div>
+        <div class="section-title" id="moreTitle"><i class="fa-solid fa-layer-group"></i> More Products</div>
         <div id="categoryProductsGrid" class="product-grid"></div>
     </div>
 
@@ -140,7 +140,10 @@
         function createProductCard(p) {
             const card = document.createElement('div');
             card.className = 'prod-card';
-            card.onclick = () => window.location.href = `details.html?id=${p.id}`;
+            card.onclick = () => {
+                window.location.href = `details.html?id=${p.id}`;
+                window.scrollTo(0,0);
+            };
             card.innerHTML = `
                 <img src="${p.mainImg || p.img}">
                 <div class="prod-info">
@@ -158,7 +161,7 @@
             document.getElementById('pCat').innerText = product.category;
             document.getElementById('mainDisplay').src = product.mainImg || product.img;
 
-            // Size Logic
+            // Size Selection Logic
             const catStr = (product.category || "").toUpperCase();
             let sizes = [];
             if (catStr.includes("FOOTWEAR")) sizes = ["6", "7", "8", "9", "10"];
@@ -197,38 +200,45 @@
                 thumbRow.appendChild(div);
             });
 
-            // LOGIC: Filter Similar Products
+            // --- PRODUCT FILTERING LOGIC ---
+            
+            // 1. Same Category Products (excluding current)
             const sameCategory = allProducts.filter(p => p.category === product.category && p.id != product.id);
+            
+            // 2. Extract Keywords (Color/Style) from name
             const keywords = product.name.toLowerCase().split(' ').filter(w => w.length > 2);
             
-            // Section 1: Closest matches (by name/color keywords)
+            // Filter Top Matching (By Name/Color)
             const topMatches = sameCategory.filter(p => 
                 keywords.some(key => p.name.toLowerCase().includes(key))
             );
 
-            // Section 2: Other products in same category
+            // Filter rest of the category
             const otherInCat = sameCategory.filter(p => !topMatches.includes(p));
 
-            // Render Section 1 (Matching)
+            // --- RENDERING ---
+
+            // Section 1: Matching (Color/Name)
             const topGrid = document.getElementById('relatedGrid');
             if (topMatches.length > 0) {
-                topMatches.slice(0, 4).forEach(p => topGrid.appendChild(createProductCard(p)));
+                topMatches.slice(0, 6).forEach(p => topGrid.appendChild(createProductCard(p)));
             } else {
                 document.getElementById('relatedSection').style.display = 'none';
             }
 
-            // Render Section 2 (Category Grid - Replacing Category circles)
+            // Section 2: All other products in same category
             const catGrid = document.getElementById('categoryProductsGrid');
             const moreTitle = document.getElementById('moreTitle');
-            moreTitle.innerHTML = `<i class="fa-solid fa-layer-group"></i> More in ${product.category}`;
+            moreTitle.innerHTML = `<i class="fa-solid fa-layer-group"></i> More ${product.category} Collection`;
 
             if (otherInCat.length > 0) {
                 otherInCat.forEach(p => catGrid.appendChild(createProductCard(p)));
-            } else if (topMatches.length <= 0) {
+            } else if (topMatches.length === 0) {
                 document.getElementById('moreSection').style.display = 'none';
             }
         }
 
+        // Button Actions
         document.getElementById('addToCartBtn').onclick = () => {
             if (document.getElementById('sizeArea').style.display === "block" && !window.selectedSize) { alert("Please select a size!"); return; }
             let cart = JSON.parse(localStorage.getItem('myCart')) || [];
@@ -243,6 +253,7 @@
             window.location.href = 'address.html';
         };
 
+        // Cart Badge
         const cart = JSON.parse(localStorage.getItem('myCart')) || [];
         if(cart.length > 0) {
             document.getElementById('badge').innerText = cart.length;
