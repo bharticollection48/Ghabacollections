@@ -31,7 +31,6 @@ window.onload = async () => {
  */
 async function refreshData() {
     try {
-        // Cache busting: t=Date.now() browser ko naya data lane par majboor karta hai
         const fetchUrl = SCRIPT_URL + (SCRIPT_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
         
         const response = await fetch(fetchUrl);
@@ -41,17 +40,14 @@ async function refreshData() {
         
         let freshProducts = [];
 
-        // Admin Panel format check: { products: [], settings: {} }
         if (result.products && Array.isArray(result.products)) {
             freshProducts = result.products;
             
-            // Sync UPI and Password to LocalStorage
             if(result.settings) {
                 localStorage.setItem('ghabaUPI', result.settings.upi);
                 localStorage.setItem('adminPassword', result.settings.password);
             }
         } 
-        // Agar result sirf ek array hai
         else if (Array.isArray(result)) {
             freshProducts = result;
         }
@@ -60,12 +56,10 @@ async function refreshData() {
             allProducts = freshProducts;
             currentData = [...allProducts];
             
-            // Store in LocalStorage for next visit
             localStorage.setItem('myProducts', JSON.stringify(allProducts));
             render(allProducts); 
             console.log("Cloud Sync Successful. Total:", allProducts.length);
         } else {
-            // Agar sheet khali hai
             render([]);
         }
     } catch (error) {
@@ -92,15 +86,12 @@ function render(data) {
     }
 
     grid.innerHTML = '';
-    
-    // Naye products hamesha upar dikhane ke liye reverse()
     const displayData = [...data].reverse();
 
     displayData.forEach(p => {
         const currentPrice = parseFloat(p.price) || 0;
         const originalPrice = Math.round(currentPrice * 1.4);
         
-        // Multiple fallback for images
         let imgPath = p.mainImg || p.img || (p.gallery && p.gallery[0]) || 'https://via.placeholder.com/300?text=No+Image';
 
         grid.innerHTML += `
@@ -152,8 +143,24 @@ function sortProducts(type) {
     render(sorted);
 }
 
+/**
+ * EDIT KIYA GAYA FUNCTION:
+ * Ab link mein product ki details bhi jayengi taaki sharing fail na ho.
+ */
 function openProduct(id) {
-    window.location.href = `details.html?id=${id}`; 
+    const p = allProducts.find(x => x.id == id);
+    if(p) {
+        // Image, Name, Price ko URL mein encode karke bhej rahe hain
+        const pImg = p.mainImg || p.img || "";
+        const pName = encodeURIComponent(p.name || "");
+        const pPrice = p.price || "0";
+        const pCat = encodeURIComponent(p.category || "Fashion");
+
+        window.location.href = `details.html?id=${id}&name=${pName}&price=${pPrice}&img=${encodeURIComponent(pImg)}&cat=${pCat}`;
+    } else {
+        // Fallback agar product list mein na mile
+        window.location.href = `details.html?id=${id}`;
+    }
 }
 
 function updateCartBadge() {
@@ -168,5 +175,4 @@ function addToWishlist(id) {
     alert("Wishlist mein add ho gaya! ❤️");
 }
 
-// Jab user doosre tab se wapas aaye toh data refresh karein
 window.onfocus = refreshData;

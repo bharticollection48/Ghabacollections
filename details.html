@@ -122,8 +122,23 @@
     <script>
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
+        
+        // --- DATA FIX LOGIC FOR SHARING ---
         const allProducts = JSON.parse(localStorage.getItem('myProducts')) || [];
-        const product = allProducts.find(x => x.id == id);
+        let product = allProducts.find(x => x.id == id);
+
+        // Agar LocalStorage me nahi mila (Shared Link Case), toh URL se data lo
+        if (!product && id) {
+            product = {
+                id: id,
+                name: params.get('name') || "Premium Product",
+                price: params.get('price') || "0",
+                mainImg: params.get('img') || "",
+                category: params.get('cat') || "General",
+                gallery: params.get('img') ? [params.get('img')] : []
+            };
+        }
+
         let selectedSize = "";
 
         if (product) {
@@ -141,7 +156,7 @@
             if (category === "Footwear") {
                 sizes = ["6", "7", "8", "9", "10"];
                 sizeArea.style.display = "block";
-            } else if (["Combo Offers", "Western Wear", "Kurtis & Dress"].includes(category)) {
+            } else if (["Combo Offers", "Western Wear", "Kurtis & Dress", "KURTIS", "SAREE"].includes(category?.toUpperCase())) {
                 sizes = ["S", "M", "L", "XL", "XXL"];
                 sizeArea.style.display = "block";
             }
@@ -163,10 +178,13 @@
             const mainBox = document.getElementById('mainBox');
             const thumbRow = document.getElementById('thumbRow');
             
-            mainDisplay.src = product.mainImg || product.img;
-            let photos = product.gallery?.length ? product.gallery : [product.mainImg || product.img];
+            const currentImg = product.mainImg || product.img;
+            mainDisplay.src = currentImg;
+            
+            let photos = product.gallery?.length ? product.gallery : [currentImg];
 
             photos.forEach((src, i) => {
+                if(!src) return;
                 const thumb = document.createElement('div');
                 thumb.className = `thumb-card ${i === 0 ? 'active' : ''}`;
                 thumb.innerHTML = `<img src="${src}">`;
@@ -186,7 +204,9 @@
                 similarProducts.forEach(sp => {
                     const relCard = document.createElement('div');
                     relCard.className = 'rel-card';
-                    relCard.onclick = () => window.location.href = `details.html?id=${sp.id}`;
+                    // Jab similar product par click ho, URL me details pass karein taaki sharing kaam kare
+                    const spUrl = `details.html?id=${sp.id}&name=${encodeURIComponent(sp.name)}&price=${sp.price}&img=${encodeURIComponent(sp.mainImg || sp.img)}&cat=${encodeURIComponent(sp.category)}`;
+                    relCard.onclick = () => window.location.href = spUrl;
                     relCard.innerHTML = `
                         <img src="${sp.mainImg || sp.img}">
                         <div class="rel-info">
@@ -232,6 +252,7 @@
         }
         window.onload = updateCartBadge;
     </script>
+
     <div class="wa-container">
         <div class="wa-message">Hi! Need help? 👋</div>
         <a href="https://wa.me/7427061744?text=Hello! Hi ! Need help ." 
